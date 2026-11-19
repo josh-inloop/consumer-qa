@@ -1,0 +1,19 @@
+appId: com.talos.app
+---
+# Navigates from home to Talos AI and waits for Moments to load.
+# Caller must have the app running on the home screen before invoking this subflow.
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd
+
+- runFlow: ../../../ios/subflows/dismiss-home-modals.yml
+
+- runFlow: ../../../ios/subflows/clear-bag.yml
+
+- tapOn:
+    id: "talos-ai-nav-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 20000

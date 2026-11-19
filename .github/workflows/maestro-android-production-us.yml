@@ -1,0 +1,716 @@
+name: Maestro Android Production US
+
+on:
+  schedule:
+    - cron: "5 5 * * *"  # 1:05 AM EDT (summer) — change to "5 6 * * *" for 1:05 AM EST (winter)
+  workflow_dispatch:
+    inputs:
+      apk_artifact_name:
+        description: "APK artifact name from the android-production workflow"
+        required: true
+        default: "universal.apk"
+      run_auth_account:
+        description: "Run Account auth test"
+        type: boolean
+        default: true
+      run_auth_checkout:
+        description: "Run Checkout auth test"
+        type: boolean
+        default: true
+      run_auth_product_detail:
+        description: "Run Product Detail auth test"
+        type: boolean
+        default: true
+      run_guest:
+        description: "Run Guest test"
+        type: boolean
+        default: true
+      run_deeplinks:
+        description: "Run Deeplinks test"
+        type: boolean
+        default: true
+      run_newbie:
+        description: "Run Newbie test"
+        type: boolean
+        default: true
+
+concurrency:
+  group: maestro-android-production-us
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  android-us:
+    name: "Maestro Android Production US"
+    runs-on: self-hosted-macos
+    timeout-minutes: 70
+
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      failed: ${{ steps.summary.outputs.failed }}
+      duration: ${{ steps.summary.outputs.duration }}
+      platform: ${{ steps.summary.outputs.platform }}
+      build_version: ${{ steps.summary.outputs.build_version }}
+
+    env:
+      APP_REPO_TOKEN: ${{ secrets.APP_REPO_ACCESS }}
+      TARGET_REPO: ${{ secrets.TARGET_REPO }}
+      MAESTRO_CLI_NO_ANALYTICS: "1"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      DELIVERY_ADDRESS: "12 Manley Hot Springs Rd"
+      DELIVERY_ADDRESS_DESCRIPTION: "Manley Hot Springs"
+      PDP_URL: "talos://open/p/basically-purified-water-24ct-16-9oz/p48913"
+      RUN_AUTH_ACCOUNT: ${{ github.event_name != 'workflow_dispatch' || inputs.run_auth_account }}
+      RUN_AUTH_CHECKOUT: ${{ github.event_name != 'workflow_dispatch' || inputs.run_auth_checkout }}
+      RUN_AUTH_PRODUCT_DETAIL: ${{ github.event_name != 'workflow_dispatch' || inputs.run_auth_product_detail }}
+      RUN_GUEST: ${{ github.event_name != 'workflow_dispatch' || inputs.run_guest }}
+      RUN_DEEPLINKS: ${{ github.event_name != 'workflow_dispatch' || inputs.run_deeplinks }}
+      RUN_NEWBIE: ${{ github.event_name != 'workflow_dispatch' || inputs.run_newbie }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Record start time
+        run: date +%s > job-start.txt
+
+      - name: Pre-run cleanup
+        run: |
+          pkill -f "maestro" || true
+          pkill -f "qemu-system" || true
+          pkill -f "emulator" || true
+          timeout 10 adb kill-server || true
+          rm -rf ~/.maestro/tests/ ~/.maestro/tests-auth/ || true
+
+      - name: Ensure GitHub CLI and ffmpeg are installed
+        run: |
+          if ! command -v gh &>/dev/null; then
+            brew install gh
+          fi
+          if ! command -v ffmpeg &>/dev/null; then
+            brew install ffmpeg
+          fi
+
+      - name: Download APK from latest android-production run
+        env:
+          GH_TOKEN: ${{ env.APP_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          ARTIFACT_NAME="${{ inputs.apk_artifact_name || 'universal.apk' }}"
+          # gh run list --status success can filter against a lagging search
+          # index and return runs that are months stale, and even the true
+          # latest run's artifact can have expired. Filter conclusion via jq
+          # against the unfiltered (always-fresh) listing, then try each
+          # candidate in turn.
+          RUN_IDS=()
+          while IFS= read -r id; do
+            [ -n "$id" ] && RUN_IDS+=("$id")
+          done < <(gh run list \
+            --repo "$TARGET_REPO" \
+            --workflow android-production.yml \
+            --limit 30 \
+            --json databaseId,conclusion \
+            --jq '[.[] | select(.conclusion=="success")][0:5][].databaseId')
+          if [ "${#RUN_IDS[@]}" -eq 0 ]; then
+            echo "::error::No successful android-production runs found for $TARGET_REPO"
+            exit 1
+          fi
+          for RUN_ID in "${RUN_IDS[@]}"; do
+            echo "Trying to download $ARTIFACT_NAME from app-repo run $RUN_ID"
+            if gh run download "$RUN_ID" \
+              --repo "$TARGET_REPO" \
+              --name "$ARTIFACT_NAME" \
+              --dir apk/; then
+              echo "Downloaded from run $RUN_ID"
+              break
+            fi
+            echo "No usable artifact on run $RUN_ID (likely expired), trying next candidate..."
+          done
+          if [ -z "$(find apk/ -name '*.apk' 2>/dev/null)" ]; then
+            echo "::error::Could not find $ARTIFACT_NAME on any of the last ${#RUN_IDS[@]} successful android-production runs"
+            exit 1
+          fi
+          APK_PATH=$(find apk/ -name "*.apk" | head -1)
+          echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+          AAPT=$(find "${ANDROID_HOME:-$HOME/Library/Android/sdk}/build-tools" -name "aapt" 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$AAPT" ] && [ -f "$APK_PATH" ]; then
+            BADGING=$("$AAPT" dump badging "$APK_PATH" 2>/dev/null || true)
+            VER_NAME=$(echo "$BADGING" | grep -oE "versionName='[^']+'" | cut -d"'" -f2 || true)
+            VER_CODE=$(echo "$BADGING" | grep -oE "versionCode='[^']+'" | cut -d"'" -f2 || true)
+            if [ -n "$VER_NAME" ] && [ -n "$VER_CODE" ]; then
+              echo "APP_VERSION=v${VER_NAME} (${VER_CODE})" >> "$GITHUB_ENV"
+            fi
+          fi
+
+      - name: Install Maestro
+        run: |
+          export MAESTRO_VERSION=2.6.1
+          if ! "$HOME/.maestro/bin/maestro" --version 2>/dev/null | grep -q "2.6.1"; then
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Write Maestro test script
+        run: |
+          cat > run-tests.sh << 'EOF'
+          #!/bin/sh
+          run_maestro_with_retry() {
+            log_file="$1"; shift
+            timeout --kill-after=10s 480 maestro test "$@" 2>&1 | tee "$log_file" || true
+            if grep -qE "device offline|UNAVAILABLE|Not able to reach|DEADLINE_EXCEEDED|waiting_for_connection|Unable to launch app" "$log_file" 2>/dev/null; then
+              echo "Device lost gRPC connection — retrying..."
+              sleep 5
+              timeout --kill-after=10s 480 maestro test "$@" 2>&1 | tee "$log_file" || true
+            fi
+          }
+          # screenrecord caps a single clip at ~180s, so loop it in the
+          # background until rec_stop signals it to end, chaining segments.
+          rec_start() {
+            name="$1"
+            rm -f "/tmp/record-${name}.stop"
+            (
+              i=0
+              while [ ! -f "/tmp/record-${name}.stop" ]; do
+                adb shell screenrecord --time-limit 170 "/sdcard/rec-${name}-$(printf '%03d' "$i").mp4" 2>/dev/null
+                i=$((i + 1))
+              done
+            ) &
+            echo $! > "/tmp/record-${name}.loop.pid"
+          }
+          # Only pulled off the emulator (and kept) when keep=true, i.e. the
+          # suite this bracketed actually failed — passing runs get nothing.
+          rec_stop() {
+            name="$1"; keep="$2"; dir="${3:-$name}"
+            touch "/tmp/record-${name}.stop"
+            loop_pid=$(cat "/tmp/record-${name}.loop.pid" 2>/dev/null || true)
+            adb shell pkill -INT screenrecord 2>/dev/null || true
+            sleep 2
+            [ -n "$loop_pid" ] && wait "$loop_pid" 2>/dev/null
+            if [ "$keep" = "true" ]; then
+              mkdir -p "recordings/${dir}"
+              for f in $(adb shell ls /sdcard/ 2>/dev/null | tr -d '\r' | grep "^rec-${name}-"); do
+                adb pull "/sdcard/$f" "recordings/${dir}/" 2>/dev/null || true
+              done
+              # Concat the chained segments into one contiguous file and
+              # compress in that single pass — this only runs on an
+              # already-failing suite.
+              final="${name}.mp4"
+              segs=$(cd "recordings/${dir}" && ls rec-${name}-*.mp4 2>/dev/null | sort)
+              if [ -n "$segs" ] && command -v ffmpeg &>/dev/null; then
+                (
+                  cd "recordings/${dir}" || exit 1
+                  : > concat-list.txt
+                  for seg in $segs; do echo "file '$seg'" >> concat-list.txt; done
+                  ffmpeg -y -f concat -safe 0 -i concat-list.txt -vf "scale=-2:720" -c:v libx264 -crf 28 -preset veryfast -c:a aac -b:a 64k "$final" 2>/dev/null
+                )
+                if [ -f "recordings/${dir}/${final}" ]; then
+                  for seg in $segs; do rm -f "recordings/${dir}/${seg}"; done
+                fi
+                rm -f "recordings/${dir}/concat-list.txt"
+              fi
+            fi
+            adb shell "rm -f /sdcard/rec-${name}-*.mp4" 2>/dev/null || true
+            rm -f "/tmp/record-${name}.stop" "/tmp/record-${name}.loop.pid"
+          }
+          if [ "$RUN_AUTH_ACCOUNT" = "true" ] || [ "$RUN_AUTH_CHECKOUT" = "true" ] || [ "$RUN_AUTH_PRODUCT_DETAIL" = "true" ]; then
+            run_maestro_with_retry login.txt frameworks/maestro/android/subflows/login.yml
+            pkill -9 -f "maestro" 2>/dev/null || true
+            sleep 2
+          fi
+          # Account and product-detail each get their own recording and
+          # failure flag — parity with Maestro's own per-flow failure
+          # screenshots — instead of one shared "auth" bucket, so a kept
+          # recording says which flow actually failed (a checkout-only
+          # dispatch was otherwise just named "auth.mp4", 2026-11-15). Both
+          # land in recordings/auth/, same as the screenshots all land in one
+          # ~/.maestro/tests-auth/ artifact. Checkout has no recording (see
+          # below).
+          if [ "$RUN_AUTH_ACCOUNT" = "true" ]; then
+            rec_start account
+            run_maestro_with_retry maestro-account.txt --format junit --output report-account.xml --env DELIVERY_ADDRESS="$DELIVERY_ADDRESS" frameworks/maestro/android/android-account.yml
+            if [ -f report-account.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-account.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch account-failed; else touch account-failed; fi
+            rec_stop account "$([ -f account-failed ] && echo true || echo false)" auth
+          fi
+          if [ "$RUN_AUTH_PRODUCT_DETAIL" = "true" ]; then
+            rec_start product-detail
+            run_maestro_with_retry maestro-product-detail.txt --format junit --output report-product-detail.xml --env DELIVERY_ADDRESS="$DELIVERY_ADDRESS" frameworks/maestro/android/android-product-detail.yml
+            if [ -f report-product-detail.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-product-detail.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch product-detail-failed; else touch product-detail-failed; fi
+            rec_stop product-detail "$([ -f product-detail-failed ] && echo true || echo false)" auth
+          fi
+          if [ "$RUN_AUTH_CHECKOUT" = "true" ]; then
+            # No recording here: the continuous adb screenrecord loop was
+            # found to tank gesture timing badly enough to hang/fail this
+            # suite (13-70s per gesture instead of <1s, confirmed by a
+            # recording-off run passing in under 4 minutes, 2026-11-15).
+            # Checkout still gets maestro.log, the hierarchy dump, and a
+            # failure screenshot — recording was never load-bearing for
+            # debugging it.
+            run_maestro_with_retry maestro-checkout.txt --format junit --output report-checkout.xml --env DELIVERY_ADDRESS="$DELIVERY_ADDRESS" --env DELIVERY_ADDRESS_DESCRIPTION="$DELIVERY_ADDRESS_DESCRIPTION" --env PDP_URL="$PDP_URL" --env MARKET=US frameworks/maestro/android/android-checkout.yml
+            if [ -f report-checkout.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-checkout.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch checkout-failed; else touch checkout-failed; fi
+          fi
+          cp -r "$HOME/.maestro/tests" "$HOME/.maestro/tests-auth" 2>/dev/null || true
+          rm -rf "$HOME/.maestro/tests" 2>/dev/null || true
+          # auth-failed still drives the combined artifact-upload gating below.
+          if [ -f account-failed ] || [ -f checkout-failed ] || [ -f product-detail-failed ]; then touch auth-failed; fi
+          if [ "$RUN_DEEPLINKS" = "true" ]; then
+            rec_start deeplinks
+            run_maestro_with_retry maestro-deeplinks.txt --format junit --output report-deeplinks.xml frameworks/maestro/android/android-deeplink.yml
+            if [ -f report-deeplinks.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-deeplinks.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch deeplinks-failed; else touch deeplinks-failed; fi
+            rec_stop deeplinks "$([ -f deeplinks-failed ] && echo true || echo false)"
+          fi
+          if [ "$RUN_GUEST" = "true" ]; then
+            rec_start guest
+            run_maestro_with_retry maestro-guest.txt --format junit --output report-guest.xml --env DELIVERY_ADDRESS="$DELIVERY_ADDRESS" frameworks/maestro/android/android-guest.yml
+            if [ -f report-guest.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-guest.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch guest-failed; else touch guest-failed; fi
+            rec_stop guest "$([ -f guest-failed ] && echo true || echo false)"
+          fi
+          if [ "$RUN_NEWBIE" = "true" ]; then
+            rec_start newbie
+            timeout --kill-after=10s 300 maestro test frameworks/maestro/android/subflows/login-newbie.yml || true
+            pkill -9 -f "maestro" 2>/dev/null || true
+            sleep 2
+            run_maestro_with_retry maestro-newbie.txt --format junit --output report-newbie.xml frameworks/maestro/android/android-newbie.yml
+            if [ -f report-newbie.xml ]; then python3 -c "import xml.etree.ElementTree as ET; root=ET.parse('report-newbie.xml').getroot(); s=root.findall('testsuite') if root.tag=='testsuites' else [root]; exit(1 if sum(int(x.get('failures',0))+int(x.get('errors',0)) for x in s) else 0)" 2>/dev/null || touch newbie-failed; else touch newbie-failed; fi
+            rec_stop newbie "$([ -f newbie-failed ] && echo true || echo false)"
+          fi
+          EOF
+          chmod +x run-tests.sh
+
+      - name: Boot emulator and run Maestro tests
+        timeout-minutes: 60
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: arm64-v8a
+          target: google_apis
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu host -no-snapshot -noaudio -no-boot-anim
+          # Set the Pixel 7's real screen spec directly on the AVD config instead of
+          # passing profile: pixel_7 to avdmanager — its --device name resolution is
+          # unreliable across this runner fleet's SDK tool versions (some machines
+          # fail every attempt with "No device found matching --device pixel_7").
+          # This hook runs after AVD creation (no --device flag involved) and before
+          # the emulator boots, so it can't hit that failure mode on any machine.
+          # Must be a single logical line: this input runs each source line as its
+          # own separate `sh -c` call (confirmed via CI log), not as one script, so
+          # a multi-line if/then/fi here is a syntax error and variables don't
+          # persist across lines. Folded (>-) joins the lines below with spaces.
+          pre-emulator-launch-script: >-
+            CONFIG_INI="${ANDROID_AVD_HOME:-$HOME/.android/avd}/test.avd/config.ini";
+            if [ -f "$CONFIG_INI" ]; then
+            grep -v -E '^(hw\.lcd\.(width|height|density)|skin\.(name|path))=' "$CONFIG_INI" > "$CONFIG_INI.tmp";
+            mv "$CONFIG_INI.tmp" "$CONFIG_INI";
+            echo 'hw.lcd.width=1080' >> "$CONFIG_INI";
+            echo 'hw.lcd.height=2400' >> "$CONFIG_INI";
+            echo 'hw.lcd.density=420' >> "$CONFIG_INI";
+            echo 'skin.name=1080x2400' >> "$CONFIG_INI";
+            fi
+          script: |
+            adb shell pm disable-user --user 0 com.android.chrome || true
+            adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r\n' > android-version.txt || true
+            timeout 120 adb install -r "$APK_PATH"
+            sh run-tests.sh
+
+      - name: Publish test summary
+        id: summary
+        if: always()
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+        run: |
+          python3 << 'EOF'
+          import xml.etree.ElementTree as ET, os, glob, sys, re, json, time
+
+          labels = {
+              "report-account.xml":        "Account",
+              "report-checkout.xml":       "Checkout",
+              "report-product-detail.xml": "Product Detail",
+              "report-guest.xml":          "Guest",
+              "report-deeplinks.xml":      "Deeplinks",
+              "report-newbie.xml":         "Newbie",
+          }
+
+          label_to_flow = {
+              "Account":        "android-account",
+              "Checkout":       "android-checkout",
+              "Product Detail": "android-product-detail",
+              "Guest":          "android-guest",
+              "Deeplinks":      "android-deeplink",
+              "Newbie":         "android-newbie",
+          }
+
+          label_to_txt = {
+              "Account":        "maestro-account.txt",
+              "Checkout":       "maestro-checkout.txt",
+              "Product Detail": "maestro-product-detail.txt",
+              "Guest":          "maestro-guest.txt",
+              "Deeplinks":      "maestro-deeplinks.txt",
+              "Newbie":         "maestro-newbie.txt",
+          }
+
+          log_errors = {}
+          _log_paths = (
+              sorted(glob.glob(os.path.expanduser("~/.maestro/tests-auth/*/maestro.log"))) +
+              sorted(glob.glob(os.path.expanduser("~/.maestro/tests/*/maestro.log")))
+          )
+          _skip_steps = {'Define variables', 'Apply configuration'}
+          for log_path in _log_paths:
+              flow_name = None
+              completed = []
+              pending_error = None
+              errors = []
+              try:
+                  with open(log_path) as f:
+                      for line in f:
+                          fm = re.search(r'Running flow (\S+)', line)
+                          if fm:
+                              flow_name = re.sub(r'\.yml.*$', '', fm.group(1)).rsplit('/', 1)[-1]
+                              completed = []
+                              errors = []
+                              pending_error = None
+                              continue
+                          comp_m = re.search(r'MaestroCommandRunner\.runCommands\S+:\s*(.+?)\s+COMPLETED', line)
+                          if comp_m:
+                              step = comp_m.group(1).strip()
+                              if step not in _skip_steps:
+                                  completed.append(step)
+                                  if len(completed) > 4:
+                                      completed.pop(0)
+                              continue
+                          cmd_m = re.search(r'\[Command execution\] CommandFailed:\s*(.+)', line)
+                          if cmd_m:
+                              pending_error = cmd_m.group(1).strip()
+                              continue
+                          failed_m = re.search(r'MaestroCommandRunner\.runCommands\S+:\s*(.+?)\s+FAILED', line)
+                          if failed_m:
+                              failed_step = failed_m.group(1).strip()
+                              entry = [f"  ✓ {s}" for s in completed]
+                              if pending_error and not pending_error.startswith('Assertion is false:'):
+                                  entry.append(f"  ✗ {failed_step} — {pending_error}")
+                              else:
+                                  entry.append(f"  ✗ {failed_step}")
+                              errors.append("\n".join(entry))
+                              pending_error = None
+              except Exception:
+                  pass
+              if pending_error and not errors:
+                  errors.append(f"  ✗ {pending_error}")
+              if flow_name and errors:
+                  log_errors.setdefault(flow_name, []).extend(errors)
+
+          summary_rows = []
+          failure_sections = []
+          any_failures = False
+          total_passed_all = 0
+          total_failed_all = 0
+
+          for path in sorted(glob.glob("report-*.xml")):
+              label = labels.get(path, path)
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception:
+                  continue
+
+              suites = root.findall("testsuite") if root.tag == "testsuites" else [root]
+              total = failures = skipped = errors = 0
+              for s in suites:
+                  total    += int(s.get("tests",    0))
+                  failures += int(s.get("failures", 0))
+                  skipped  += int(s.get("skipped",  0))
+                  errors   += int(s.get("errors",   0))
+              if total == 0:
+                  total    = sum(1 for _ in root.iter("testcase"))
+                  failures = sum(1 for tc in root.iter("testcase") if tc.find("failure") is not None)
+                  errors   = sum(1 for tc in root.iter("testcase") if tc.find("error")   is not None)
+              passed = total - failures - skipped - errors
+              total_passed_all += passed
+              total_failed_all += failures + errors
+
+              if failures + errors > 0:
+                  any_failures = True
+                  status = "❌"
+              else:
+                  status = "✅"
+
+              summary_rows.append(f"| {status} {label} | {passed} | {failures + errors} | {skipped} |")
+
+              failure_details = []
+              if failures + errors > 0:
+                  txt_file = label_to_txt.get(label, "")
+                  txt_msgs = []
+                  if txt_file:
+                      try:
+                          with open(txt_file) as f:
+                              for line in f:
+                                  m = re.search(r'\[Failed\]\s+\S+\s+\([^)]+\)\s+\((.+)\)\s*$', line.strip())
+                                  if m:
+                                      txt_msgs.append(m.group(1))
+                      except Exception:
+                          pass
+                  if txt_msgs:
+                      failure_details.append("```\n" + "\n".join(f"  ✗ {msg}" for msg in txt_msgs) + "\n```")
+                  else:
+                      flow = label_to_flow.get(label, "")
+                      log_msgs = log_errors.get(flow, [])
+                      if log_msgs:
+                          failure_details.append("```\n" + "\n\n".join(log_msgs) + "\n```")
+                      else:
+                          failure_details.append(f"{failures + errors} test(s) failed (no details available)")
+
+              failure_details = list(dict.fromkeys(failure_details))
+              if failure_details:
+                  body = "\n\n".join(failure_details)
+                  failure_sections.append(
+                      f"<details>\n<summary>❌ {label} — Failures</summary>\n\n{body}\n\n</details>"
+                  )
+
+          # A suite that was enabled but never wrote a report (e.g. maestro hung
+          # and was killed by run_maestro_with_retry's timeout) must count as a
+          # failure here too — otherwise it's silently absent from summary_rows
+          # and any_failures stays False, reporting a run that tested nothing as
+          # a full pass (TALOS Talos AI iOS checkout silent-success incident,
+          # 2026-11-13).
+          expected_reports = {
+              "report-account.xml":        os.environ.get("RUN_AUTH_ACCOUNT") == "true",
+              "report-checkout.xml":       os.environ.get("RUN_AUTH_CHECKOUT") == "true",
+              "report-product-detail.xml": os.environ.get("RUN_AUTH_PRODUCT_DETAIL") == "true",
+              "report-guest.xml":          os.environ.get("RUN_GUEST") == "true",
+              "report-deeplinks.xml":      os.environ.get("RUN_DEEPLINKS") == "true",
+              "report-newbie.xml":         os.environ.get("RUN_NEWBIE") == "true",
+          }
+          seen_reports = set(glob.glob("report-*.xml"))
+          for path, should_run in expected_reports.items():
+              if should_run and path not in seen_reports:
+                  label = labels[path]
+                  any_failures = True
+                  total_failed_all += 1
+                  summary_rows.append(f"| ❌ {label} | 0 | 1 | 0 |")
+                  failure_sections.append(
+                      f"<details>\n<summary>❌ {label} — Failures</summary>\n\n"
+                      f"```\n  ✗ Suite crashed or hung before writing a report ({path} missing)\n```\n\n</details>"
+                  )
+
+          lines = [
+              "## Test Summary", "",
+              "| Suite | ✅ Passed | ❌ Failed | ⏭️ Skipped |",
+              "|---|---|---|---|",
+          ]
+          lines.extend(summary_rows or ["| — | — | — | — |"])
+          if failure_sections:
+              lines.append("")
+              lines.extend(failure_sections)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(lines) + "\n")
+
+          try:
+              with open("job-start.txt") as f:
+                  elapsed = int(time.time()) - int(f.read().strip())
+              mins, secs = divmod(elapsed, 60)
+              duration = f"{mins}m {secs}s" if mins else f"{secs}s"
+          except Exception:
+              duration = "—"
+
+          build_version = os.environ.get("APP_VERSION", "")
+          try:
+              android_version = open("android-version.txt").read().strip()
+          except Exception:
+              android_version = ""
+          platform = f"Android {android_version}" if android_version else "Android"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as go:
+              go.write(f"passed={total_passed_all}\n")
+              go.write(f"failed={total_failed_all}\n")
+              go.write(f"duration={duration}\n")
+              go.write(f"platform={platform}\n")
+              go.write(f"build_version={build_version}\n")
+
+          sys.exit(1 if any_failures else 0)
+          EOF
+
+      - name: Upload auth suite artifacts
+        if: always() && hashFiles('auth-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-auth-artifacts
+          path: ~/.maestro/tests-auth/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload auth suite recording
+        if: always() && hashFiles('auth-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-auth-recording
+          path: recordings/auth/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload guest suite artifacts
+        if: always() && hashFiles('guest-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-guest-artifacts
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload guest suite recording
+        if: always() && hashFiles('guest-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-guest-recording
+          path: recordings/guest/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload deeplinks suite artifacts
+        if: always() && hashFiles('deeplinks-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-deeplinks-artifacts
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload deeplinks suite recording
+        if: always() && hashFiles('deeplinks-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-deeplinks-recording
+          path: recordings/deeplinks/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload newbie suite artifacts
+        if: always() && hashFiles('newbie-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-newbie-artifacts
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload newbie suite recording
+        if: always() && hashFiles('newbie-failed') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: maestro-android-us-newbie-recording
+          path: recordings/newbie/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Write daily results artifact
+        if: always()
+        env:
+          PASSED: ${{ steps.summary.outputs.passed }}
+          FAILED: ${{ steps.summary.outputs.failed }}
+          DURATION: ${{ steps.summary.outputs.duration }}
+          BUILD_VERSION: ${{ steps.summary.outputs.build_version }}
+          OUTCOME: ${{ steps.summary.outcome }}
+          RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, xml.etree.ElementTree as ET, glob
+          labels = {
+              "report-account.xml":        "Account",
+              "report-checkout.xml":       "Checkout",
+              "report-product-detail.xml": "Product Detail",
+              "report-guest.xml":          "Guest",
+              "report-deeplinks.xml":      "Deeplinks",
+              "report-newbie.xml":         "Newbie",
+          }
+          suites = {}
+          for path in sorted(glob.glob("report-*.xml")):
+              label = labels.get(path, path)
+              try:
+                  root = ET.parse(path).getroot()
+                  suite_nodes = root.findall("testsuite") if root.tag == "testsuites" else [root]
+                  total = failures = skipped = errors = 0
+                  names = []
+                  for s in suite_nodes:
+                      total    += int(s.get("tests",    0))
+                      failures += int(s.get("failures", 0))
+                      skipped  += int(s.get("skipped",  0))
+                      errors   += int(s.get("errors",   0))
+                      f = int(s.get("failures", 0)) + int(s.get("errors", 0))
+                      if f == 0:
+                          f = sum(1 for tc in s if tc.find("failure") is not None or tc.find("error") is not None)
+                      if f > 0:
+                          n = s.get("name", "").strip()
+                          if n:
+                              names.append(n)
+                  if total == 0:
+                      total    = sum(1 for _ in root.iter("testcase"))
+                      failures = sum(1 for tc in root.iter("testcase") if tc.find("failure") is not None)
+                      errors   = sum(1 for tc in root.iter("testcase") if tc.find("error")   is not None)
+                  suites[label] = {
+                      "passed": total - failures - skipped - errors,
+                      "failed": failures + errors,
+                      "skipped": skipped,
+                      "failed_tests": names,
+                  }
+              except Exception:
+                  pass
+          # A suite enabled this run but missing its report (crashed/hung, never
+          # written) must still get a 'suites' entry — otherwise the daily
+          # summary's merge sees no label for it at all and can't count the
+          # failure (TALOS Talos AI iOS checkout silent-success incident, 2026-11-13).
+          expected_reports = {
+              "report-account.xml":        os.environ.get("RUN_AUTH_ACCOUNT") == "true",
+              "report-checkout.xml":       os.environ.get("RUN_AUTH_CHECKOUT") == "true",
+              "report-product-detail.xml": os.environ.get("RUN_AUTH_PRODUCT_DETAIL") == "true",
+              "report-guest.xml":          os.environ.get("RUN_GUEST") == "true",
+              "report-deeplinks.xml":      os.environ.get("RUN_DEEPLINKS") == "true",
+              "report-newbie.xml":         os.environ.get("RUN_NEWBIE") == "true",
+          }
+          for path, should_run in expected_reports.items():
+              label = labels[path]
+              if should_run and label not in suites:
+                  suites[label] = {"passed": 0, "failed": 1, "skipped": 0, "failed_tests": ["Suite crashed or hung"]}
+          # Per-suite breakdown lets the daily summary merge a partial rerun (e.g.
+          # just the one suite that failed) with an earlier full run from today,
+          # instead of the summary having to treat this run's data as the whole day.
+          failed_tests = {label: e["failed_tests"] for label, e in suites.items() if e["failed_tests"]}
+          data = {
+              'result': os.environ.get('OUTCOME', 'failure'),
+              'passed': int(os.environ.get('PASSED') or 0),
+              'failed': int(os.environ.get('FAILED') or 0),
+              'duration': os.environ.get('DURATION') or '—',
+              'build_version': os.environ.get('BUILD_VERSION', ''),
+              'run_url': os.environ.get('RUN_URL', ''),
+              'failed_tests': failed_tests,
+              'suites': suites,
+          }
+          with open('daily-results.json', 'w') as f:
+              json.dump(data, f)
+          PYEOF
+
+      - name: Upload daily results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: daily-results-maestro-android-us
+          path: daily-results.json
+          if-no-files-found: warn
+          retention-days: 2
+
+      - name: Post-run cleanup
+        if: always()
+        run: |
+          pkill -f "maestro" || true
+          pkill -f "qemu-system" || true
+          pkill -f "emulator" || true
+          timeout 10 adb kill-server || true
+          rm -rf apk/ report-*.xml maestro-*.txt ~/.maestro/tests/ ~/.maestro/tests-auth/ recordings/ job-start.txt auth-failed account-failed checkout-failed product-detail-failed guest-failed deeplinks-failed newbie-failed daily-results.json || true

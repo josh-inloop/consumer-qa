@@ -1,0 +1,223 @@
+appId: com.talos.app
+---
+
+# Launch app — runs before checkout, user is logged in from login subflow
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: subflows/dismiss-home-modals.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 15000
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd
+
+# Dismiss invite friends modal if present
+- runFlow:
+    when:
+      visible:
+        text: "I'll do this later"
+    commands:
+      - tapOn:
+          text: "I'll do this later"
+      - waitForAnimationToEnd
+
+# Navigate to Account tab in bottom nav
+- extendedWaitUntil:
+    visible:
+      id: "accountTab"
+    timeout: 15000
+- tapOn:
+    id: "accountTab"
+- waitForAnimationToEnd
+
+# Guard: the Talos AI "Introducing your personal shopping genius" intro is a
+# swipeable bottom-sheet ad that overlays the screen on first launch. It covers
+# the nav bar and swallows the Account tab tap, so we can land back on Home.
+# Close it via its testID, then re-tap Account to reach the account page.
+- runFlow:
+    when:
+      visible:
+        id: "swipableAdvertisement_close"
+    commands:
+      - tapOn:
+          id: "swipableAdvertisement_close"
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "accountTab"
+      - waitForAnimationToEnd
+
+# Guard: PromoInterstitialDialog (e.g. SNAP EBT promo) is a full-screen React
+# Navigation modal that can appear over any page. Its close button has no
+# testID; press Back to pop the modal, then re-tap Account to land there.
+- runFlow:
+    when:
+      visible:
+        id: "interstitial-promo"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "accountTab"
+      - waitForAnimationToEnd
+
+# Guard: a promo modal can animate in after the checks above already ran,
+# covering the account page. Re-run the generic dismiss subflow once more
+# right before verifying the page loaded.
+- runFlow: subflows/dismiss-home-modals.yml
+
+# Guard: PromoInterstitialDialog can still animate in during the wait below,
+# after every guard above already found nothing. Give it a chance to appear,
+# then dismiss it before the real assertion.
+- extendedWaitUntil:
+    visible:
+      id: "AccountPage"
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "interstitial-promo"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+
+# Verify account page is loaded
+- extendedWaitUntil:
+    visible:
+      id: "AccountPage"
+    timeout: 15000
+
+# 1) My Address
+- tapOn:
+    id: "myAddressLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "AddNewAddressButton"
+    timeout: 5000
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd
+
+# 2) My Orders
+- tapOn:
+    id: "myOrdersLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "OrderCard"
+    timeout: 10000
+# Unlike the other account sub-pages, My Orders' back button only sometimes carries
+# the BackButton testID — the Charlotte-native variant (CXP_CHARLOTTE_NATIVE split)
+# has none. Tap it when present, otherwise edge-swipe back, so this works regardless
+# of which variant is live.
+- runFlow:
+    when:
+      visible:
+        id: "BackButton"
+    commands:
+      - tapOn:
+          id: "BackButton"
+- runFlow:
+    when:
+      notVisible:
+        id: "BackButton"
+    commands:
+      - swipe:
+          start: "1%,50%"
+          end: "60%,50%"
+          duration: 300
+- waitForAnimationToEnd
+
+# 3) Buy It Again
+- tapOn:
+    id: "buyItAgainLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Buy It Again"
+    timeout: 5000
+- assertVisible:
+    id: "ProductTileImage"
+- assertVisible:
+    text: "Orders"
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd
+
+# 4) Payments — confirm GoCash and card option are visible
+# PaymentsPage ID is absent on UK; GoCash text is consistent across US and UK.
+# AddNewCardButton does not exist on UK — Credit/Debit card label is consistent.
+- tapOn:
+    id: "paymentsLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "GoCash"
+    timeout: 15000
+- assertVisible:
+    text: "GoCash"
+
+# Regression check for TALOS-122178 (Android-only ticket, extended here for parity): confirm
+# Apple Pay, PayPal, and Cash App Pay are all present as separately labeled rows.
+- scrollUntilVisible:
+    element:
+      text: "Apple Pay"
+    direction: DOWN
+- assertVisible:
+    text: "Apple Pay"
+- scrollUntilVisible:
+    element:
+      text: "PayPal"
+    direction: DOWN
+- assertVisible:
+    text: "PayPal"
+# Cash App Pay is US-only; not offered as a payment method in the UK.
+- runFlow:
+    when:
+      true: ${MARKET != 'UK'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Cash App Pay"
+          direction: DOWN
+      - assertVisible:
+          text: "Cash App Pay"
+
+- scrollUntilVisible:
+    element:
+      text: "Credit/Debit card"
+    direction: DOWN
+- assertVisible:
+    text: "Credit/Debit card"
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd
+# Confirm back on account page before scrolling to Settings
+- extendedWaitUntil:
+    visible:
+      id: "AccountPage"
+    timeout: 10000
+
+# 5) Settings — verify the settings screen opens
+- scrollUntilVisible:
+    element:
+      id: "settingsLineItem"
+    direction: DOWN
+- tapOn:
+    id: "settingsLineItem"
+- waitForAnimationToEnd
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd
+
+# 6) Help — verify row is visible on account page
+- assertVisible:
+    id: "helpLineItem"
+
+- stopApp

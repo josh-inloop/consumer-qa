@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Automation Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; color: #e5e7eb; font-family: 'Inter', ui-sans-serif, sans-serif; font-size: 14px; line-height: 1.5; padding: 24px; max-width: 1200px; margin: 0 auto; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::marker { display: none; }
+    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; margin-bottom: 14px; }
+    .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .suite-card { background: #1e293b; border-radius: 6px; padding: 14px; border-left: 3px solid #374151; display: block; color: inherit; text-decoration: none; }
+    .suite-card.pass { border-left-color: #22c55e; }
+    .suite-card.fail { border-left-color: #ef4444; }
+    .suite-card.na   { opacity: 0.45; }
+    a.suite-card:hover { background: #263548; text-decoration: none; }
+    .suite-name { font-weight: 600; font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .stat-row { font-size: 12px; color: #9ca3af; }
+    .stat-row + .stat-row { margin-top: 3px; }
+    .n-pass { color: #22c55e; font-weight: 600; }
+    .n-fail { color: #ef4444; font-weight: 600; }
+    .build-ver { font-size: 11px; color: #4b5563; margin-top: 5px; }
+    .dur { font-size: 11px; color: #4b5563; margin-left: 4px; }
+    .health-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px; margin-bottom: 12px; }
+    .health-badge.all-pass { background: #052e16; color: #4ade80; }
+    .health-badge.has-fail { background: #2d0a0a; color: #f87171; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; padding: 6px 10px; text-align: left; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+    td { padding: 7px 10px; border-bottom: 1px solid #0f172a; white-space: nowrap; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    td a { color: inherit; }
+    td a:hover { text-decoration: none; opacity: 0.8; }
+    .c-pass { color: #22c55e; }
+    .c-fail { color: #ef4444; }
+    .c-na   { color: #374151; }
+  </style>
+</head>
+<body>
+
+<header style="display:flex;align-items:baseline;gap:16px;margin-bottom:24px;flex-wrap:wrap">
+  <h1 style="font-size:20px;font-weight:600;color:#f9fafb">Daily Automation Dashboard</h1>
+  <span id="meta" style="font-size:12px;color:#6b7280">Loading…</span>
+</header>
+
+<div class="card">
+  <div class="card-title">Latest Run</div>
+  <div id="latest-content"><span style="color:#6b7280">Loading…</span></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Pass Rate — Last 30 Runs</div>
+  <div id="chartLegend" style="text-align:center;margin-bottom:8px"></div>
+  <div style="position:relative;height:280px">
+    <canvas id="trendChart"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Recent Runs</div>
+  <div style="overflow-x:auto">
+    <table id="historyTable"></table>
+  </div>
+</div>
+
+<script>
+const SUITES = [
+  { key: 'playwright_us',    label: 'Playwright US',  type: 'playwright', color: '#60a5fa' },
+  { key: 'playwright_uk',    label: 'Playwright UK',  type: 'playwright', color: '#93c5fd' },
+  { key: 'android_us',       label: 'Android US',     type: 'maestro',    color: '#4ade80' },
+  { key: 'android_uk',       label: 'Android UK',     type: 'maestro',    color: '#86efac' },
+  { key: 'ios_us',           label: 'iOS US',         type: 'maestro',    color: '#fb923c' },
+  { key: 'ios_uk',           label: 'iOS UK',            type: 'maestro',    color: '#fcd34d' },
+  { key: 'talos_ai_android_us', label: 'Talos AI Android US', type: 'maestro',    color: '#c084fc' },
+  { key: 'talos_ai_ios_us',     label: 'Talos AI iOS US',     type: 'maestro',    color: '#f472b6' },
+];
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function passRate(d, type) {
+  if (!d) return null;
+  if (type === 'playwright') {
+    const t = (d.chromium_passed||0)+(d.chromium_failed||0)+(d.webkit_passed||0)+(d.webkit_failed||0);
+    return t ? Math.round(((d.chromium_passed||0)+(d.webkit_passed||0))/t*100) : null;
+  }
+  const t = (d.passed||0)+(d.failed||0);
+  return t ? Math.round((d.passed||0)/t*100) : null;
+}
+
+function suiteStatus(d, type) {
+  if (!d) return 'na';
+  if (type === 'playwright') return ((d.chromium_failed||0)+(d.webkit_failed||0)) > 0 ? 'fail' : 'pass';
+  return (d.failed||0) > 0 ? 'fail' : 'pass';
+}
+
+function renderCard(suite, d) {
+  const status = suiteStatus(d, suite.type);
+  const icon = status === 'pass' ? '✅' : status === 'fail' ? '❌' : '—';
+  let body = '';
+  if (!d) {
+    body = '<div class="stat-row" style="color:#4b5563">unavailable</div>';
+  } else if (suite.type === 'playwright') {
+    const cp = d.chromium_passed||0, cf = d.chromium_failed||0;
+    const wp = d.webkit_passed||0,   wf = d.webkit_failed||0;
+    const cd = d.chromium_duration||'', wd = d.webkit_duration||'';
+    const totalF = cf + wf;
+    const ft = d.failed_tests || {};
+    const allFailed = [...new Set([...(ft.chromium||[]), ...(ft.webkit||[])])];
+    const expander = totalF > 0 && allFailed.length > 0
+      ? `<details style="margin-top:6px" onclick="event.stopPropagation()"><summary style="font-size:11px;color:#9ca3af;cursor:pointer;list-style:none">▸ ${totalF} failure${totalF !== 1 ? 's' : ''}</summary><div style="margin-top:4px">${allFailed.map(t => `<div style="font-size:11px;color:#f87171;padding:1px 0">✗ ${escHtml(t)}</div>`).join('')}</div></details>`
+      : '';
+    body = `
+      <div class="stat-row">Chromium: <span class="n-pass">${cp} ✓</span>${cf ? ` <span class="n-fail">${cf} ✗</span>` : ''}${cd ? ` <span class="dur">${cd}</span>` : ''}</div>
+      <div class="stat-row">WebKit:&nbsp;&nbsp;&nbsp;<span class="n-pass">${wp} ✓</span>${wf ? ` <span class="n-fail">${wf} ✗</span>` : ''}${wd ? ` <span class="dur">${wd}</span>` : ''}</div>`;
+    if (d.build_version) body += `<div class="build-ver">${d.build_version}</div>`;
+    body += expander;
+  } else {
+    const p = d.passed||0, f = d.failed||0;
+    const dur = d.duration||'';
+    body = `<div class="stat-row"><span class="n-pass">${p} ✓</span>${f ? ` <span class="n-fail">${f} ✗</span>` : ''}${dur ? ` <span class="dur">${dur}</span>` : ''}</div>`;
+    if (d.build_version) body += `<div class="build-ver">${d.build_version}</div>`;
+    if (f > 0 && d.failed_tests && Object.keys(d.failed_tests).length > 0) {
+      const items = Object.keys(d.failed_tests)
+        .map(t => `<div style="font-size:11px;color:#f87171;padding:1px 0">✗ ${escHtml(t)}</div>`).join('');
+      body += `<details style="margin-top:6px" onclick="event.stopPropagation()"><summary style="font-size:11px;color:#9ca3af;cursor:pointer;list-style:none">▸ ${f} failure${f !== 1 ? 's' : ''}</summary><div style="margin-top:4px">${items}</div></details>`;
+    }
+  }
+  const tag = d && d.run_url ? `a href="${d.run_url}" target="_blank"` : 'div';
+  const closeTag = d && d.run_url ? 'a' : 'div';
+  return `<${tag} class="suite-card ${status}">
+    <div class="suite-name"><span>${suite.label}</span><span>${icon}</span></div>
+    ${body}
+  </${closeTag}>`;
+}
+
+fetch('./trends.json?v=' + Date.now())
+  .then(r => r.json())
+  .then(data => {
+    const runs = data.runs || [];
+    const gen = data.generated_at ? new Date(data.generated_at) : null;
+    const genStr = gen
+      ? gen.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    document.getElementById('meta').textContent =
+      `Updated ${genStr} · ${runs.length} run${runs.length !== 1 ? 's' : ''}`;
+
+    // Latest run cards
+    const latest = runs.length ? runs[runs.length - 1] : null;
+    if (!latest) {
+      document.getElementById('latest-content').innerHTML = '<span style="color:#6b7280">No runs recorded yet.</span>';
+    } else {
+      const failingCount = SUITES.filter(s => suiteStatus(latest.suites && latest.suites[s.key], s.type) === 'fail').length;
+      const unavailCount = SUITES.filter(s => !latest.suites || !latest.suites[s.key]).length;
+      let badge;
+      if (failingCount > 0) {
+        badge = `<div class="health-badge has-fail">🚨 ${failingCount} of ${SUITES.length} production suites failed</div>`;
+      } else if (unavailCount > 0) {
+        badge = `<div class="health-badge has-fail">⚠️ ${unavailCount} of ${SUITES.length} production suites unavailable</div>`;
+      } else {
+        badge = `<div class="health-badge all-pass">✅ All ${SUITES.length} production suites passed</div>`;
+      }
+      document.getElementById('latest-content').innerHTML =
+        badge + `<div class="suite-grid">${SUITES.map(s => renderCard(s, latest.suites && latest.suites[s.key])).join('')}</div>`;
+    }
+
+    // Trend chart
+    document.getElementById('chartLegend').innerHTML = SUITES.map(s =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;margin:0 10px;font-size:11px;color:#9ca3af">` +
+      `<span style="width:6px;height:6px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block"></span>` +
+      `${s.label}</span>`
+    ).join('');
+
+    const chartRuns = runs.slice(-30);
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels: chartRuns.map(r => r.date),
+        datasets: SUITES.map(s => ({
+          label: s.label,
+          data: chartRuns.map(r => passRate(r.suites && r.suites[s.key], s.type)),
+          borderColor: s.color,
+          backgroundColor: s.color + '18',
+          pointBackgroundColor: s.color,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.2,
+          spanGaps: true,
+          clip: false,
+        })),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 8 } },
+        scales: {
+          y: {
+            min: 0,
+            max: 100,
+            ticks: { callback: v => v + '%', color: '#9ca3af', stepSize: 25 },
+            grid: { color: '#1e293b' },
+          },
+          x: {
+            ticks: { color: '#9ca3af', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 },
+            grid: { color: '#1e293b' },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw + '%' : 'N/A'}`,
+            },
+          },
+        },
+      },
+    });
+
+    // Recent runs table
+    const recentRuns = runs.slice(-30).reverse();
+    const headers = ['Date', ...SUITES.map(s => s.label)];
+    const tbody = recentRuns.map(run => {
+      const cells = SUITES.map(s => {
+        const d = run.suites && run.suites[s.key];
+        if (!d) return '<td class="c-na">—</td>';
+        const status = suiteStatus(d, s.type);
+        let count;
+        if (s.type === 'playwright') {
+          const p = (d.chromium_passed||0) + (d.webkit_passed||0);
+          const t = p + (d.chromium_failed||0) + (d.webkit_failed||0);
+          count = `${p}/${t}`;
+        } else {
+          const t = (d.passed||0) + (d.failed||0);
+          count = `${d.passed||0}/${t}`;
+        }
+        const icon = status === 'pass' ? '✅' : '❌';
+        const cls  = status === 'pass' ? 'c-pass' : 'c-fail';
+        const inner = `${icon} <span style="font-size:11px;color:#6b7280">${count}</span>`;
+        return d.run_url
+          ? `<td class="${cls}"><a href="${d.run_url}" target="_blank">${inner}</a></td>`
+          : `<td class="${cls}">${inner}</td>`;
+      }).join('');
+      return `<tr><td style="color:#d1d5db">${run.date}</td>${cells}</tr>`;
+    }).join('');
+
+    document.getElementById('historyTable').innerHTML =
+      `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tbody}</tbody>`;
+  })
+  .catch(err => {
+    document.getElementById('latest-content').innerHTML =
+      `<span style="color:#ef4444">Error loading trends.json: ${err.message}</span>`;
+  });
+</script>
+</body>
+</html>

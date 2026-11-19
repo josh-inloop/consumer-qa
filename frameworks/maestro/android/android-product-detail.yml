@@ -1,0 +1,111 @@
+appId: com.talos.app
+---
+
+# Relaunch app — user is still logged in from login subflow earlier in the suite
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: subflows/dismiss-home-modals.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd
+- runFlow: subflows/clear-bag.yml
+
+# Tap search bar and type eggs
+- tapOn: "Search"
+- waitForAnimationToEnd
+- inputText: "eggs"
+- waitForAnimationToEnd
+
+# US: tap "See all results for eggs" suggestion if visible
+- runFlow:
+    when:
+      visible:
+        text: '(?i)see all results for eggs'
+    commands:
+      - tapOn:
+          text: '(?i)see all results for eggs'
+      - waitForAnimationToEnd
+
+# UK: if results haven't loaded yet, submit via Enter
+- runFlow:
+    when:
+      notVisible:
+        id: "ProductTileImage"
+    commands:
+      - pressKey: Enter
+      - waitForAnimationToEnd
+
+# Wait for product results to load, then wait for filter buttons to settle
+# (SNAP EBT filter loads slightly after tiles — race condition without this wait)
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 15000
+- waitForAnimationToEnd
+
+# US: tap "Limit 1 @ $2.00" badge (SNAP EBT filter is US-only — reliable market signal)
+- runFlow:
+    when:
+      visible: "SNAP EBT"
+    commands:
+      - tapOn: '(?i).*Limit 1 @.*'
+      - waitForAnimationToEnd
+
+# UK: no SNAP EBT — tap first in-stock product tile
+# Condition checks ProductTileImage is still visible (i.e. still on search results,
+# not already navigated to PDP by the US branch above)
+# Tap ProductLink (name/price row), not ProductTileImage: the image's bounds
+# overlap the tile's quantity stepper, and a tap resolved into that overlap
+# hits the stepper instead of navigating — reproduced in CI, not on-device.
+# childOf anchors to tiles with resource-id exactly "ProductTile", excluding
+# "ProductTileOutOfStock" tiles (confirmed live: an OOS tile shows a "Notify me"
+# CTA instead of "Add to bag", which fails the assertion below).
+- runFlow:
+    when:
+      visible:
+        id: "ProductTileImage"
+    commands:
+      - tapOn:
+          id: "ProductLink"
+          childOf:
+            id: "^ProductTile$"
+          index: 0
+      - waitForAnimationToEnd
+
+# Guard: Android activity restoration can surface the Canceled order screen
+# after tapping a product link. Press Back to dismiss and land on the PDP.
+- runFlow:
+    when:
+      visible:
+        text: "Canceled"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+
+# Verify product detail page loaded with hero photo
+- extendedWaitUntil:
+    visible:
+      id: "image"
+    timeout: 5000
+- assertVisible:
+    id: "image"
+
+# Verify product price (product information)
+- assertVisible:
+    text: '(?i)^[$£]\d+\.\d+'
+
+# Verify add to bag CTA (flexible copy, incl. out-of-stock "notify me" variant)
+- assertVisible:
+    text: '(?i)^((add|update).*(bag)|check availability|notify me.*(stock))$'
+
+# Similar Products omitted: PDP scroll behavior is unreliable in Maestro on both
+# Android and iOS. Hero image, price, and add to bag CTA cover the core PDP contract.
+
+- stopApp

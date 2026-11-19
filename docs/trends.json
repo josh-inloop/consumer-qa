@@ -1,0 +1,2465 @@
+{
+  "run_count": 30,
+  "date_range": {
+    "from": "2026-10-19",
+    "to": "2026-11-17"
+  },
+  "generated_at": "2026-11-17T22:12:16.088230+00:00",
+  "runs": [
+    {
+      "date": "2026-10-19",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 38s",
+          "webkit_passed": 18,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 11s",
+          "run_url": "",
+          "build_version": "v14.0.30 (197439)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 4s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 14s",
+          "run_url": "",
+          "build_version": "v14.0.30 (197439)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 12s",
+          "build_version": "v14.1.0 (197509)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 41s",
+          "build_version": "v14.1.0 (197509)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 57s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 50s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 17s",
+          "build_version": "v14.1.0 (197509)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 49s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-20",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 35s",
+          "webkit_passed": 18,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 6s",
+          "run_url": "",
+          "build_version": "v14.1.10 (197573)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 14s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 4s",
+          "run_url": "",
+          "build_version": "v14.1.10 (197573)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "11m 27s",
+          "build_version": "v14.1.20 (197605)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 3,
+          "failed": 0,
+          "duration": "8m 51s",
+          "build_version": "v14.1.20 (197605)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 11s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 47s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 9s",
+          "build_version": "v14.1.20 (197605)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 42s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-21",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "14m 7s",
+          "webkit_passed": 18,
+          "webkit_failed": 0,
+          "webkit_duration": "6m 12s",
+          "run_url": "",
+          "build_version": "v14.1.20 (197635)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 42s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 3s",
+          "run_url": "",
+          "build_version": "v14.1.20 (197635)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "11m 50s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "10m 0s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 46s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 13s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 47s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 5s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-22",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 53s",
+          "webkit_passed": 18,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 52s",
+          "run_url": "",
+          "build_version": "v14.1.30 (197695)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 23s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 12s",
+          "run_url": "",
+          "build_version": "v14.1.30 (197695)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "11m 53s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "8m 43s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 47s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 54s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 26s",
+          "build_version": "v14.1.22 (197668)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 6s",
+          "build_version": "v14.1.0 (197510)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-23",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 29s",
+          "webkit_passed": 18,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 49s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 16s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 17s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 6s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 8s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "22m 42s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 30s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 3s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 47s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-24",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 20s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 47s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 20s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 11s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 44s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "8m 44s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "20m 58s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 18s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": null,
+        "talos_ai_ios_us": null
+      }
+    },
+    {
+      "date": "2026-10-25",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 29,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 27s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 8s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 51s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 6s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "11m 46s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "8m 42s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 47s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 48s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": null,
+        "talos_ai_ios_us": null
+      }
+    },
+    {
+      "date": "2026-10-26",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 22s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 23s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 53s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 14s",
+          "run_url": "",
+          "build_version": "v14.1.40 (197735)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 26s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 54s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 17s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "17m 31s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "failure",
+          "passed": 3,
+          "failed": 1,
+          "duration": "11m 25s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {
+            "Talos AI Moments": [
+              "Test Suite"
+            ]
+          }
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 51s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-27",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 50s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 6s",
+          "run_url": "",
+          "build_version": "v14.2.10 (197804)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 42s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 4s",
+          "run_url": "",
+          "build_version": "v14.2.10 (197804)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 11s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 9s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "22m 31s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 28s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 8s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 53s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-28",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 53s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 32s",
+          "run_url": "",
+          "build_version": "v14.2.10 (197804)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 43s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 5s",
+          "run_url": "",
+          "build_version": "v14.2.10 (197804)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 22s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "10m 18s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 58s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 28s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 11s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 13s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 45s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 39s",
+          "run_url": "",
+          "build_version": "v14.2.30 (197891)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 35s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 48s",
+          "run_url": "",
+          "build_version": "v14.2.30 (197891)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 31s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 18s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 26s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 9s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 45s",
+          "build_version": "v14.2.0 (197749)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 48s",
+          "build_version": "v14.2.0 (197750)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-30",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 30s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 56s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 32s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 48s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 36s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 34s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 0s",
+          "build_version": "v14.3.0 (197972)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 31s",
+          "build_version": "v14.3.0 (197972)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "12m 24s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 39s",
+          "build_version": "v14.3.0 (197972)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-10-31",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "11m 43s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 44s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 7s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 52s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "11m 28s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 26s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 53s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 15s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 45s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 7s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-01",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 28,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 18s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 57s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 4s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 46s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 2s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 28s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 22s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 10s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 8s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 0,
+          "failed": 0,
+          "duration": "1m 20s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {},
+          "suites": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-02",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "11m 58s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 23s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 21s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 17s",
+          "run_url": "",
+          "build_version": "v14.2.40 (197931)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 21s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 31s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 43s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "17m 18s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "12m 6s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 45s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-03",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "9m 59s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 29s",
+          "run_url": "",
+          "build_version": "v14.3.10 (198022)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 38s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 41s",
+          "run_url": "",
+          "build_version": "v14.3.10 (198022)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 18s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 33s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 23s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 18s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "11m 24s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "21m 20s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-04",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 34s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 6s",
+          "run_url": "",
+          "build_version": "v14.3.20 (198073)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 32s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 55s",
+          "run_url": "",
+          "build_version": "v14.3.20 (198073)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 13s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 15s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 31s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 21s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "12m 2s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 29s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-05",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 32s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 25s",
+          "run_url": "",
+          "build_version": "v14.3.30 (198109)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 34s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 49s",
+          "run_url": "",
+          "build_version": "v14.3.30 (198109)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "18m 24s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "9m 13s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "31m 44s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "17m 58s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "13m 28s",
+          "build_version": "v14.3.0 (197992)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "28m 23s",
+          "build_version": "v14.3.0 (197998)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-06",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 31,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 23s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 11s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 40s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 12s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "18m 44s",
+          "build_version": "v14.4.0 (198178)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "21m 11s",
+          "build_version": "v14.4.0 (198178)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "30m 53s",
+          "build_version": "v14.4.0 (198179)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 40s",
+          "build_version": "v14.4.0 (198179)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 52s",
+          "build_version": "v14.4.0 (198178)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "27m 52s",
+          "build_version": "v14.4.0 (198179)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-07",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 39s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 11s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 35s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 47s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 1s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 8s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 13s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 32s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 45s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 12s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-08",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 28,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 0s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 50s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 31s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 37s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 40s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "17m 14s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "22m 9s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "13m 44s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 34s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 31s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "11m 52s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 58s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "5m 40s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 17s",
+          "run_url": "",
+          "build_version": "v14.3.40 (198157)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 20s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 3,
+          "failed": 0,
+          "duration": "25m 11s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "23m 23s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "17m 10s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 16s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 51s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-10",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "11m 49s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 11s",
+          "run_url": "",
+          "build_version": "v14.4.10 (198244)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 49s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 4s",
+          "run_url": "",
+          "build_version": "v14.4.10 (198244)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 3s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "21m 49s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "20m 57s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 16s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 59s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 42s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-11",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 29s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 33s",
+          "run_url": "",
+          "build_version": "v14.4.20 (198291)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 33s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 41s",
+          "run_url": "",
+          "build_version": "v14.4.20 (198291)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 49s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 38s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 3s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 17s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 30s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 40s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-12",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 28s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 41s",
+          "run_url": "",
+          "build_version": "v14.4.30 (198341)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 56s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 55s",
+          "run_url": "",
+          "build_version": "v14.4.30 (198341)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 32s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 30s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 30s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 22s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "13m 53s",
+          "build_version": "v14.4.0 (198220)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 4s",
+          "build_version": "v14.4.0 (198218)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-13",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "13m 33s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 36s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 9s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 2s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "18m 41s",
+          "build_version": "v14.5.0 (198420)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 57s",
+          "build_version": "v14.5.0 (198420)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "29m 1s",
+          "build_version": "v14.5.0 (198421)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 0s",
+          "build_version": "v14.5.0 (198421)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 38s",
+          "build_version": "v14.5.0 (198420)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": null
+      }
+    },
+    {
+      "date": "2026-11-14",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 37s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 17s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 11s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 51s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 43s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 43s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "20m 48s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "13m 44s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 35s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "20m 55s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-15",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 28,
+          "chromium_failed": 0,
+          "chromium_duration": "10m 19s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "5m 2s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 23s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 56s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "13m 15s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "29m 14s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 18s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 27s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 0s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "19m 46s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-16",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "11m 1s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 42s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "4m 55s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 59s",
+          "run_url": "",
+          "build_version": "v14.4.40 (198390)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "14m 21s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "12m 14s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "21m 9s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "16m 48s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "13m 39s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "21m 10s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    },
+    {
+      "date": "2026-11-17",
+      "suites": {
+        "playwright_us": {
+          "result": "success",
+          "chromium_passed": 30,
+          "chromium_failed": 0,
+          "chromium_duration": "12m 23s",
+          "webkit_passed": 19,
+          "webkit_failed": 0,
+          "webkit_duration": "4m 34s",
+          "run_url": "",
+          "build_version": "v14.5.10 (198536)",
+          "failed_tests": {}
+        },
+        "playwright_uk": {
+          "result": "success",
+          "chromium_passed": 17,
+          "chromium_failed": 0,
+          "chromium_duration": "3m 41s",
+          "webkit_passed": 15,
+          "webkit_failed": 0,
+          "webkit_duration": "3m 47s",
+          "run_url": "",
+          "build_version": "v14.5.10 (198536)",
+          "failed_tests": {}
+        },
+        "android_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "12m 56s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "android_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "12m 0s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_us": {
+          "result": "success",
+          "passed": 6,
+          "failed": 0,
+          "duration": "20m 51s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "ios_uk": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "15m 19s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_android_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "14m 0s",
+          "build_version": "v14.5.0 (198493)",
+          "run_url": "",
+          "failed_tests": {}
+        },
+        "talos_ai_ios_us": {
+          "result": "success",
+          "passed": 4,
+          "failed": 0,
+          "duration": "18m 52s",
+          "build_version": "v14.5.0 (198496)",
+          "run_url": "",
+          "failed_tests": {}
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,239 @@
+appId: com.talos.app
+
+# Runs regardless of pass/fail. Without this, a mid-flow assertion failure (e.g. the
+# address guard, or losing the payment sheet) aborts before an order is ever placed,
+# leaving a real item on this shared account's server-side bag — which then fails other
+# suites that assume an empty bag at start.
+onFlowComplete:
+  - launchApp
+  - waitForAnimationToEnd
+  # Checkout's close button has no id — just an untagged "Back" button, except
+  # under SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG, which drops it for the persistent tab
+  # bar — tap "Ask Go" there instead so cleanup can still reach talos-ai-exit.
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-tab-bar-ask-go"
+      commands:
+        - tapOn:
+            id: "talos-ai-tab-bar-ask-go"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          text: "^Back$"
+      commands:
+        - tapOn:
+            text: "^Back$"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-chat-input"
+      commands:
+        - runFlow: subflows/talos-ai-exit.yml
+  - extendedWaitUntil:
+      visible: "Search"
+      timeout: 15000
+      optional: true
+  - runFlow: ../../ios/subflows/clear-bag.yml
+  - stopApp
+---
+
+# NOTE: unlike PDP, the Talos AI checkout screen (GoAICheckoutPage, TALOS-122382 tab-nav
+# rollout) is a real navigator page with a plain ScrollView — not a gorhom BottomSheet —
+# so its content (including talos-ai-add-payment-button) is fully exposed to the iOS a11y
+# tree. Verified live 2026-09-13. This is what makes iOS checkout automatable at all;
+# Talos AI Product Detail is still blocked by the BottomSheetScrollView gap.
+
+- launchApp
+- waitForAnimationToEnd
+- runFlow: ../../ios/subflows/dismiss-home-modals.yml
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# ── 1. Add to bag via natural language ────────────────────────────────────────
+# Stepper tap is not testable on iOS (BottomSheet gesture recognizer intercepts
+# XCUITest events) — use a direct add query, same as ios-talos-ai-ama.yml.
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Add one Basically water to my bag"
+- tapOn:
+    id: "talos-ai-submit-button"
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      text: ".*Bag.*1.*"
+    timeout: 25000
+
+# ── 2. Open Talos AI checkout ────────────────────────────────────────────────────
+# "Checkout" (vs "Confirm Checkout") is the SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG
+# experiment's title when the tab bar stays visible on this screen — a 50/50
+# split with no account override, so either can appear on a given run.
+- tapOn:
+    id: "talos-ai-tab-bar-bag"
+- extendedWaitUntil:
+    visible: "^(Confirm )?Checkout$"
+    timeout: 10000
+- assertVisible: "^(Confirm )?Checkout$"
+
+# ── 3. Verify address, open payment sheet, select Pay with cash ───────────────
+# Guard: never place an order to anything other than the fake Manley test address.
+- assertVisible:
+    id: "talos-ai-address-button"
+    text: ".*12 Manley Hot Springs Rd.*"
+- assertNotVisible:
+    text: "(?i)pyrohova|vinnyts"
+
+- scrollUntilVisible:
+    element:
+      id: "talos-ai-add-payment-button"
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- tapOn:
+    id: "talos-ai-add-payment-button"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: "Pay with cash"
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- tapOn: "Pay with cash"
+- waitForAnimationToEnd
+
+# ── 4. Place order ────────────────────────────────────────────────────────────
+# Prefix match, not exact — on iOS the button's accessibility label coalesces
+# with the sibling price text into "Swipe to order, $X.XX", which an exact
+# "Swipe to order" match can't find (TALOS Talos AI iOS checkout failure, 2026-11-13).
+- scrollUntilVisible:
+    element:
+      text: "(?i)^Swipe to order.*"
+    direction: DOWN
+# Forced 5s settle delay (no native "wait N ms" command exists, so this
+# waits on an id that's never visible, burning the full timeout). Fixes a
+# CI-only failure where the swipe got misrouted into the checkout sheet's
+# own dismiss gesture instead of the slider, 100% of the time — never
+# reproduced on a simulator with the identical command/device/build, only
+# in CI's cold-boot + CLI-piped invocation. Confirmed live 2026-11-14 that
+# a cold-booted app's gesture recognizers need a moment to settle before
+# this swipe reliably lands on the slider instead of the sheet.
+- extendedWaitUntil:
+    notVisible:
+      id: "__settle_delay_probe__"
+    timeout: 5000
+# Explicit near-full-width coordinates, not an element-anchored swipe —
+# "swipe: from: <selector>, direction: RIGHT" travels a Maestro-computed
+# distance that isn't scaled to the element's actual width, so it covers a
+# smaller proportion of the slide track on a wider device. Confirmed live:
+# on an iPhone 17 (402pt wide) the element-anchored swipe (even slowed to
+# duration: 1500) reliably completed the order, but on an iPhone 17 Pro Max
+# (440pt wide — CI's actual simulator) the identical gesture reproducibly
+# failed, either stranding the slider mid-track or popping back to the Talos AI
+# chat screen, with no order placed (TALOS Talos AI iOS checkout failure,
+# 2026-11-13). Retrying the same element-anchored swipe up to 3x did not
+# help either — it's a distance problem, not a timing one.
+# Switching to explicit screen-percentage coordinates fixed it on both
+# devices (2 clean order placements verified on the Pro Max). Y is pinned to
+# where the footer actually sat in both verification runs, which already had
+# the persistent talos-ai tab bar visible (SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG's footer-
+# stacked-above-tab-bar state) — if the other variant (footer flush to the
+# screen bottom, no tab bar) ever shows up and this starts failing again,
+# re-verify live rather than assume this Y still lines up.
+- swipe:
+    start: "5%,84%"
+    end: "96%,84%"
+    duration: 1500
+- waitForAnimationToEnd
+
+# ── 5. Dismiss survey if it appears ──────────────────────────────────────────
+- runFlow:
+    when:
+      visible:
+        id: "DialogHeaderCloseButton"
+    commands:
+      - tapOn:
+          id: "DialogHeaderCloseButton"
+      - waitForAnimationToEnd
+
+# ── 6. Dismiss tip modal if it appears ───────────────────────────────────────
+- runFlow:
+    when:
+      visible:
+        text: "Add a tip for your driver"
+    commands:
+      - tapOn:
+          point: "50%,15%"
+      - waitForAnimationToEnd
+
+# ── 7. Wait for order progress screen ────────────────────────────────────────
+# id matches either the legacy screen (OrderDetailsButton) or the new order-progress
+# treatment currently in test (viewOrderButton).
+- extendedWaitUntil:
+    visible:
+      id: "orderDetailsButton|viewOrderButton"
+    timeout: 90000
+
+- runFlow:
+    when:
+      visible:
+        text: "Add a tip for your driver"
+    commands:
+      - tapOn:
+          point: "50%,15%"
+      - waitForAnimationToEnd
+
+# ── 8. Cancel order ───────────────────────────────────────────────────────────
+# Post-order cancel screens are shared core-checkout, not Talos AI — reuse the
+# already-verified iOS selectors from ios/ios-checkout.yml rather than Android's
+# Talos AI checkout's text-based taps (that screen's iOS layout/ids differ).
+- tapOn:
+    id: "orderDetailsButton|viewOrderButton"
+- waitForAnimationToEnd
+- swipe:
+    start: "50%,70%"
+    end: "50%,30%"
+    duration: 400
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,89%"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderButton"
+    timeout: 10000
+- tapOn:
+    id: "CancelOrderButton"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderInitialScreen"
+    timeout: 10000
+- tapOn:
+    id: "DialogPrimaryAction"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderReasonsScreen"
+    timeout: 30000
+- tapOn:
+    id: "radio-button-talos.app.orderHelpDialog.cancelOrder.cancelReason.placedOrderbyMistake"
+- waitForAnimationToEnd
+- tapOn:
+    id: "DialogPrimaryAction"
+- waitForAnimationToEnd
+
+- stopApp

@@ -1,0 +1,168 @@
+appId: com.talos.app
+---
+
+- launchApp
+- waitForAnimationToEnd
+- runFlow: ../../ios/subflows/dismiss-home-modals.yml
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# SHP_CHK_TALOS_AI_AMA_INITIAL_TAB can land this account on the Ask Go (chat)
+# tab instead of For You/Moments — talos-ai-address-button is shared chrome on
+# both tabs, so it can't tell them apart; talos-ai-chat-input only exists on Ask
+# Go. Only switch over when that's the case — tapping For You while already
+# on it reloads the screen into a transitional full-bleed state with no
+# address button, failing the assertion below.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-chat-input"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-for-you"
+      - waitForAnimationToEnd
+
+# ── 1. Moments load — no black screen ─────────────────────────────────────────
+# A fresh switch into For You can show a one-time full-bleed tutorial card
+# (its own header, no address button) before Talos AI's normal chrome renders —
+# extendedWaitUntil tolerates that instead of asserting immediately.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 15000
+    optional: true
+# CXP_SHP_TALOS_AI_OCTOBER_2026 is only a 25% rollout (confirmed 2026-11-15, Feature
+# Flags workspace Novus) — an account outside that bucket never gets realtime
+# moments and instead lands on the un-triggered "Tap Go to build yours" lander.
+# Verify that known-good state explicitly instead of silently passing or failing
+# opaquely when the overlay never shows.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+
+# ── 2. Address switch → Moments refresh ───────────────────────────────────────
+# Match the secondary address by text, not position — the list also carries
+# permanent addresses for other suites (e.g. 5000 S Broad St for Playwright US
+# regression), so a fixed index silently lands on whichever address happens to
+# occupy that slot instead of "1 Manley" once the account has more than two.
+#
+# On a small enough viewport the last row can sit flush against the screen
+# bottom, overlapping the fixed "Add new address" footer button (see
+# android-talos-ai-moments.yml). Which address (5000 S Broad or 1 Manley) ends up
+# in that last, at-risk slot varies, so scroll+center the matched row before
+# tapping rather than relying on either address's usual position. Row ids
+# here don't expose a stable sub-label id in the production build the way
+# Android's "--primary" does (a "--subheading1" id is visible when inspecting
+# a locally-run build, but the CI-installed ProductionRelease build doesn't
+# expose it — confirmed from a live run's logs), so this taps the full row,
+# same as it always has.
+- tapOn:
+    id: "talos-ai-address-button"
+- extendedWaitUntil:
+    visible:
+      id: "AddressListButton:[0-9]+"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "AddressListButton:[0-9]+"
+      text: ".*1 Manley.*"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "AddressListButton:[0-9]+"
+    text: ".*1 Manley.*"
+- waitForAnimationToEnd
+# Address switch reloads Moments content, which can land on a full-bleed
+# immersive card (its own header, no address button) before Talos AI's normal
+# chrome re-renders. Wait for that reload to settle first, same as Android.
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 20000
+    optional: true
+# Same 25%-rollout fallback as above — the address switch re-triggers the same
+# lander for an account outside the rollout bucket.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+
+# Switch back to primary address — wait for Talos AI to settle after content
+# reload. Match by text, not position, for the same reason as the
+# switch-away tap above. "12 Manley" is the account's primary address, always
+# pinned in the "Delivering to" section rather than the variable-order "More
+# Addresses" list, so it isn't exposed to the same at-risk-slot issue.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 10000
+- tapOn:
+    id: "talos-ai-address-button"
+- extendedWaitUntil:
+    visible:
+      id: "AddressListButton:[0-9]+"
+    timeout: 10000
+- tapOn:
+    id: "AddressListButton:[0-9]+"
+    text: ".*12 Manley.*"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 20000
+    optional: true
+# Same 25%-rollout fallback as above.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+
+# Verify the switch-back restored the primary address — the shared Automation US
+# account must not be left on the secondary (1 Manley) for the checkout suite,
+# which inherits this address and places a live order.
+#
+# Pattern shortened to "12 Manley" only (2026-09-10, run 34451210057): iOS exposes
+# this pill's visible truncated text rather than a full accessibilityLabel, and it
+# was truncating to "12 Manley H..." — cutting off "Hot Springs Rd" entirely, so the
+# longer pattern failed even though the failure screenshot confirmed the address had
+# switched back correctly. "12 Manley" still uniquely distinguishes primary from the
+# secondary "1 Manley Hot Springs Rd" and survives this truncation.
+#
+# Timeout raised 10000 -> 20000 (2026-10-13, runs 38365658828 and 38384586410):
+# both failures' screenshots showed the full-bleed "Scroll Moments" tutorial
+# overlay still covering the screen, matching the reload-settle case above —
+# just not always cleared within 10s. Matched to the 20000 used for that wait.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+      text: ".*12 Manley.*"
+    timeout: 20000
+
+# ── 3. Back navigation ───────────────────────────────────────────────────────
+- runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+- assertVisible: "Search"
+
+- stopApp

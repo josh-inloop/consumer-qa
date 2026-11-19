@@ -1,0 +1,46 @@
+appId: com.talos.app
+---
+# Switches the active delivery address to the saved address matching TARGET_ADDRESS.
+# Caller passes TARGET_ADDRESS as a partial street string (e.g. "5000 S Broad").
+# Call again with the original address text to restore after the test.
+- tapOn:
+    id: "AddressBarAddressName"
+- extendedWaitUntil:
+    visible:
+      id: "AddNewAddressButton"
+    timeout: 15000
+# Guard against a duplicate saved address silently breaking selection (a recurring
+# bug where two saved addresses end up with the same recipient name): fail loudly
+# here instead of tapping whichever match a bare regex happens to hit.
+#
+# Scoped to the "--primary" label specifically, not a bare text match: each address row
+# also renders a "--secondary" line that repeats the full street address, and the page's
+# own delivery-status banner shows the current address too, so a bare text regex matches
+# 3 on-screen nodes for a single real address (confirmed live, 2026-09-20) and
+# false-positives this guard even with no duplicate present.
+- assertVisible:
+    id: "AddressListButton:[0-9]+--primary"
+    text: "(?i).*${TARGET_ADDRESS}.*"
+    index: 0
+- assertNotVisible:
+    id: "AddressListButton:[0-9]+--primary"
+    text: "(?i).*${TARGET_ADDRESS}.*"
+    index: 1
+- tapOn:
+    id: "AddressListButton:[0-9]+--primary"
+    text: "(?i).*${TARGET_ADDRESS}.*"
+    index: 0
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "AddressesPage"
+    commands:
+      - tapOn:
+          id: "BackButton"
+      - waitForAnimationToEnd
+- runFlow: dismiss-home-modals.yml
+- extendedWaitUntil:
+    visible:
+      id: "AddressBarAddressName"
+    timeout: 15000

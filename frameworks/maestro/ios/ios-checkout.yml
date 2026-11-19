@@ -1,0 +1,271 @@
+appId: com.talos.app
+
+# Runs regardless of pass/fail. Without this, a mid-flow assertion failure (e.g. the map
+# pin check, the address guard, or the driver-tip check) aborts before an order is ever
+# placed, leaving a real item on this shared account's server-side bag — which then fails
+# other suites that assume an empty bag at start.
+onFlowComplete:
+  - launchApp
+  - extendedWaitUntil:
+      visible:
+        id: "swipableAdvertisement_close"
+      timeout: 12000
+      optional: true
+  - runFlow: subflows/dismiss-home-modals.yml
+  - extendedWaitUntil:
+      visible: "Search"
+      timeout: 15000
+      optional: true
+  - runFlow: subflows/clear-bag.yml
+  - stopApp
+---
+
+# Relaunch app — account ends with stopApp, user is still logged in
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: subflows/dismiss-home-modals.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 15000
+- runFlow: subflows/clear-bag.yml
+
+# Deep-link directly to the pinned PDP — bypasses search ranking, OOS substitution
+# (e.g., listerine yielding only OOS variants), and Mix & Match upsells from
+# unrelated SKUs. PDP_URL is per-market (mirrors Playwright's URL_PDP pin).
+- openLink: "${PDP_URL}"
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+      - waitForAnimationToEnd
+# Exact match on the literal button text ("Add to Bag" / "Update Bag"), not a
+# loose "starts with add/update, ends with bag" pattern — that looser form also
+# matched a Similar Products carousel stepper's accessibility label ("Add
+# Monster Ultra, 500ml to bag") on Android (TALOS Android UK checkout failure,
+# 2026-11-13); tightened here too since the same carousel exists on iOS.
+- extendedWaitUntil:
+    visible:
+      text: "(?i)^(add to bag|update bag)$"
+    timeout: 30000
+# Tap unconditionally — extendedWaitUntil already confirmed visibility; avoids
+# the race where a runFlow `when` re-check races against PDP state changes.
+- tapOn:
+    text: "(?i)^(add to bag|update bag)$"
+- waitForAnimationToEnd
+
+# Dismiss "2 for £X Mix & Match" upsell bottom sheet if it appears — it covers MyBagButton.
+# Try the standard close-icon id first; if the modal is still up, fall back to coordinate tap on X.
+- runFlow:
+    when:
+      visible:
+        text: "Mix & Match"
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "DialogHeaderCloseButton_icon"
+          commands:
+            - tapOn:
+                id: "DialogHeaderCloseButton_icon"
+            - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              text: "Mix & Match"
+          commands:
+            - tapOn:
+                point: "7%,49%"
+            - waitForAnimationToEnd
+
+# Tap My Bag button on PDP to navigate to bag
+- extendedWaitUntil:
+    visible:
+      id: "MyBagButton"
+    timeout: 10000
+- tapOn:
+    id: "MyBagButton"
+- waitForAnimationToEnd
+
+# Dismiss product swap suggestion modal if it appears
+- runFlow:
+    when:
+      visible:
+        text: "Leave it"
+    commands:
+      - tapOn:
+          text: "Leave it"
+      - waitForAnimationToEnd
+
+# Guard: fail fast if nothing was added (e.g. OOS product showed Check Availability)
+- assertNotVisible: "Your bag is empty"
+
+# Scroll to and tap Checkout button
+- scrollUntilVisible:
+    element:
+      id: "Checkout_Button"
+    direction: DOWN
+- tapOn:
+    id: "Checkout_Button"
+- waitForAnimationToEnd
+
+# Decline FAM modal if it appears
+- runFlow:
+    when:
+      visible:
+        id: "DialogHeaderCloseButton_icon"
+    commands:
+      - tapOn:
+          id: "DialogHeaderCloseButton_icon"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "No thanks, I don't want the savings"
+    commands:
+      - tapOn:
+          text: "No thanks, I don't want the savings"
+      - waitForAnimationToEnd
+
+# The Checkout Aisle — continue if the interstitial appears
+- runFlow:
+    when:
+      visible:
+        text: "Continue to Checkout"
+    commands:
+      - tapOn:
+          text: "Continue to Checkout"
+      - waitForAnimationToEnd
+
+# Verify checkout screen is ready
+- extendedWaitUntil:
+    visible:
+      id: "PlaceOrderButton"
+    timeout: 30000
+
+# Verify the map thumbnail rendered. The Map container mounts at full size even when the map
+# view inside it fails to draw (seen blank on Android build 12.18.0), so check the pin annotation
+# instead of the container — it only appears once the map itself has actually drawn.
+- assertVisible:
+    text: "Map pin"
+
+# Open payment selection
+- scrollUntilVisible:
+    element:
+      id: "PaymentSelection_Button"
+    direction: DOWN
+- tapOn:
+    id: "PaymentSelection_Button"
+- waitForAnimationToEnd
+
+# Select Pay with cash
+- scrollUntilVisible:
+    element:
+      id: "PayWithCashButton"
+    direction: DOWN
+- tapOn:
+    id: "PayWithCashButton"
+- waitForAnimationToEnd
+
+# Confirm payment dialog if it appears
+- runFlow:
+    when:
+      visible:
+        id: "DialogPrimaryAction"
+    commands:
+      - tapOn:
+          id: "DialogPrimaryAction"
+      - waitForAnimationToEnd
+
+# Wait for checkout page to return
+- extendedWaitUntil:
+    visible:
+      id: "PlaceOrderButton"
+    timeout: 15000
+
+# Guard: never place an order to anything other than the per-market fake address.
+# DELIVERY_ADDRESS is set by the workflow (Manley/Alaska for US, Shetland/UK for UK).
+# If the saved primary on the account drifts (e.g. Vinnytsia/Pyrohova reappears),
+# fail loudly here instead of shipping a real fake order to the wrong MFC.
+- assertVisible:
+    id: "AddressSeciton_DescriptionText"
+- assertVisible: "(?i).*${DELIVERY_ADDRESS_DESCRIPTION}.*"
+- assertNotVisible:
+    text: "(?i)pyrohova|vinnyts"
+
+# Verify the driver-tip section renders. Tips returned to the checkout page after
+# the post-order tip experiment was removed; this guards the section disappearing.
+# Doesn't verify which tip is selected by default — that would require an
+# accessibility `selected` prop the component doesn't currently emit.
+- scrollUntilVisible:
+    element:
+      id: "DriverTip"
+    direction: DOWN
+- assertVisible:
+    id: "DriverTip"
+
+# Place the order
+- scrollUntilVisible:
+    element:
+      id: "PlaceOrderButton"
+    direction: DOWN
+- tapOn:
+    id: "PlaceOrderButton"
+- waitForAnimationToEnd
+
+# Wait for order progress screen, then open order details sheet.
+# id matches either the legacy screen (OrderDetailsButton) or the new order-progress
+# treatment currently in test (viewOrderButton).
+- extendedWaitUntil:
+    visible:
+      id: "orderDetailsButton|viewOrderButton"
+    timeout: 90000
+- tapOn:
+    id: "orderDetailsButton|viewOrderButton"
+- waitForAnimationToEnd
+
+# Scroll down in sheet to reveal Help, then tap by coordinates
+- swipe:
+    start: "50%,70%"
+    end: "50%,30%"
+    duration: 400
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,89%"
+- waitForAnimationToEnd
+
+# Tap Cancel Order
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderButton"
+    timeout: 10000
+- tapOn:
+    id: "CancelOrderButton"
+- waitForAnimationToEnd
+
+# Confirm cancel without refund
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderInitialScreen"
+    timeout: 10000
+- tapOn:
+    id: "DialogPrimaryAction"
+- waitForAnimationToEnd
+
+# Select first cancellation reason and confirm
+- extendedWaitUntil:
+    visible:
+      id: "CancelOrderReasonsScreen"
+    timeout: 30000
+- tapOn:
+    id: "radio-button-talos.app.orderHelpDialog.cancelOrder.cancelReason.placedOrderbyMistake"
+- waitForAnimationToEnd
+- tapOn:
+    id: "DialogPrimaryAction"
+- waitForAnimationToEnd
+
+- stopApp

@@ -1,0 +1,5 @@
+{
+  "_comment": "'silenced' entries are excluded from the Daily Automation Summary's pass/fail counts and Slack alerting, and shown instead in a separate 'Known issues' line. Use this when a suite is failing for a known infra/build-pipeline reason that is NOT an app regression, so it stops generating false signal while the real fix is in flight. Remove the entry once the underlying issue is resolved. 'ref' (a PR or Jira link) is optional — omit it for a short-lived, self-explanatory silence that isn't worth a tracked ticket; 'detail' is an optional free-text sentence appended after the standard message, e.g. to scope the silence to one flow within a broader suite. 'notes' entries are informational only — they render as their own line in the same Slack section but never affect counting/alerting; use them to flag things like a silence also masking an unrelated real bug. Every Jira ticket a note's 'text' mentions must be its own Slack mrkdwn link, e.g. <https://your-jira-instance.atlassian.net/browse/KEY-123|KEY-123>.",
+  "silenced": [],
+  "notes": []
+}

@@ -1,0 +1,16 @@
+appId: com.talos.app
+---
+# Exits Talos AI and returns to the Talos home screen.
+# Caller should only invoke this when Talos AI is already open.
+# TALOS-126214 deleted the hamburger/drawer menu entirely (Menu, the "Back to
+# Talos"/"Browse Classic Talos" sidebar row, GoAISettingsPage and its
+# subpages are all gone). For You/Browse/Checkout's header now has no exit
+# affordance at all — only the Ask Go tab's header has a "Close" button
+# (GoAIAmaPage's onClosePress), which exits Go directly in one tap. Switch to
+# that tab first so "Close" is reachable regardless of which Go screen the
+# caller left us on.
+- tapOn:
+    id: "talos-ai-tab-bar-ask-go"
+- waitForAnimationToEnd
+- tapOn: "Close"
+- waitForAnimationToEnd

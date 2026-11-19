@@ -1,0 +1,47 @@
+name: Weekly Bug Digest
+
+on:
+  workflow_dispatch:
+    inputs:
+      slack_target:
+        description: "Slack channel or user ID to post to (overrides WEEKLY_BUG_DIGEST_CHANNEL secret)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "5 12 * * 1"  # 8:05 AM EDT / 7:05 AM EST
+
+jobs:
+  bug-digest:
+    name: "Post Weekly Bug Digest"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Generate Slack payload
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}              # svc_bugs@talos.app service account, not tied to a personal account
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}      # svc_bugs@talos.app service account, not tied to a personal account
+          SLACK_TARGET: ${{ inputs.slack_target || secrets.WEEKLY_BUG_DIGEST_CHANNEL }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+        run: node scripts/weekly-bug-digest.js
+
+      - name: Post to Slack
+        uses: slackapi/slack-github-action@v3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: slack-payload.json
+
+      - name: Cleanup
+        if: always()
+        run: rm -f slack-payload.json

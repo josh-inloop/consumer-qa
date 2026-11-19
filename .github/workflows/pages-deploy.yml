@@ -1,0 +1,46 @@
+name: Deploy QA Dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+  # Daily Automation Summary commits docs/trends.json using the default
+  # GITHUB_TOKEN, and a push authored by GITHUB_TOKEN doesn't trigger other
+  # workflows' `on: push` (GitHub's loop-prevention rule), so that commit's
+  # "Commit and push dashboard" step dispatches this workflow explicitly
+  # via `gh workflow run` right after it pushes.
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: "Deploy QA Dashboard"
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs
+          include-hidden-files: true
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

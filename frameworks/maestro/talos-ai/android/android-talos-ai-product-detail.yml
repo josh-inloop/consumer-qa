@@ -1,0 +1,115 @@
+appId: com.talos.app
+---
+
+# Relaunch can restore a slow-loading Talos AI screen; give it a few seconds to
+# render before the exit guard checks, or the guard misses it and the flow
+# ends up waiting on Home's "Search" text forever.
+- launchApp
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# ── TALOS-121911: variant selector crash on switch ────────────────────────────
+# Tapping a size/pack variant chip on the PDP swapped state to the new
+# variant before its data (e.g. images/nutrition array) had resolved, so a
+# `.length` access on the still-undefined field crashed the screen with
+# "Cannot read property 'length' of undefined". Ask Talos AI for a product with
+# multiple variants and open its PDP from within Talos AI.
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Show me Pepsi 12 pack 12oz can"
+- hideKeyboard
+- tapOn:
+    id: "talos-ai-submit-button"
+
+- extendedWaitUntil:
+    visible: "Pepsi 12pk 12oz Can"
+    timeout: 25000
+# The tile grid can still be mid-layout (images/badges resizing the row)
+# right after the text becomes visible, especially on the CI Android
+# emulator — let it settle before reading tap coordinates off the hierarchy.
+- waitForAnimationToEnd
+# Tap the product tile's image button, which is a separate clickable element
+# from the title text below it — the title itself sits in its own clickable
+# row, so a bare text tap on "Pepsi 12pk 12oz Can" is ambiguous between the
+# two and can land on the wrong one. The image button's own accessibility
+# text is also just the product name (index 0, appearing before the title
+# row in traversal order), so scope with index rather than anchoring on a
+# temperature/promo badge like "Cold", which isn't always present (e.g.
+# "New Lower Price" can take its place).
+- tapOn:
+    text: "Pepsi 12pk 12oz Can"
+    index: 0
+
+# CI's Android emulator occasionally still shifts tile layout a beat after
+# the above tap fires, landing it in a dead zone and leaving the PDP
+# unopened (confirmed via hierarchy/screenshot comparison against a real
+# device on the same build, which never needed a retry). One retry is
+# enough to absorb that race without masking a real crash/regression below.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-pdp-close"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      notVisible:
+        id: "talos-ai-pdp-close"
+    commands:
+      - tapOn:
+          text: "Pepsi 12pk 12oz Can"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "talos-ai-pdp-close"
+          timeout: 10000
+
+# Confirm the default variant loaded before switching
+- assertVisible: "Pepsi 12pk 12oz Can"
+- assertVisible: "12oz · 12pk"
+
+# Switch to a different size/pack variant — the exact repro step from TALOS-121911
+- tapOn: "7.5oz · 10pk"
+- waitForAnimationToEnd
+
+# Regression guard: PDP must swap in place, not crash
+- assertNotVisible: "(?i)Oops! There's an Error"
+- assertNotVisible: "(?i)Cannot read propert(y|ies)"
+- assertVisible: "Pepsi 10pk 7.5oz Mini Can"
+
+# Switch back so the variant selector itself is exercised in both directions
+- tapOn: "12oz · 12pk"
+- waitForAnimationToEnd
+- assertNotVisible: "(?i)Oops! There's an Error"
+- assertVisible: "Pepsi 12pk 12oz Can"
+
+- tapOn:
+    id: "talos-ai-pdp-close"
+- waitForAnimationToEnd
+
+# Future PDP regression checks should be appended below this line.
+
+# This suite's regression coverage (TALOS-121911) is fully verified above —
+# nothing past this point tests anything real. Exiting Talos AI's sidebar back
+# to Home is a separate gesture this suite doesn't need to prove, and tapping
+# it here has been an unreliable, intermittent tap/gesture race (not a
+# selector issue — confirmed via hierarchy inspection) that even a hardened
+# retry sequence couldn't guarantee. This suite always runs last in the CI
+# job (see maestro-talos-ai-android-production-us.yml), so there's no next
+# suite in the same run to strand by skipping the exit; any stranded-relaunch
+# state on a future run is already handled by the initial guard above.
+- stopApp

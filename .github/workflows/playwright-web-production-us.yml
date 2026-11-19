@@ -1,0 +1,519 @@
+name: Playwright Web Production US
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_auth:
+        description: "Run auth tests"
+        type: boolean
+        default: true
+      run_chromium:
+        description: "Run guest suite (Desktop Chromium)"
+        type: boolean
+        default: true
+      run_webkit:
+        description: "Run guest suite (Mobile WebKit)"
+        type: boolean
+        default: true
+      run_newbie:
+        description: "Run Newbie test suite"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "5 11 * * *"  # 7:05 AM EDT (summer) — change to "5 12 * * *" for 7:05 AM EST (winter)
+    # Must run after ~7:00 AM ET — tobacco restock at the DDZ regression's Philadelphia address.
+
+concurrency:
+  group: playwright-web-us
+  cancel-in-progress: true
+
+jobs:
+  us:
+    name: "Playwright Web Production US"
+    runs-on: self-hosted-base-nat
+    # Pin execution to the official Playwright image so the WebKit OS libs
+    # (and browsers) are baked in — immune to self-hosted runner image drift,
+    # which is what removed libxslt.so.1 and broke WebKit launches.
+    # IMPORTANT: keep this tag's version in lockstep with @playwright/test in
+    # package.json (currently 1.60.0). Bump both together; never float the tag.
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+    timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: read
+
+    outputs:
+      passed: ${{ steps.summary.outputs.passed }}
+      failed: ${{ steps.summary.outputs.failed }}
+      duration: ${{ steps.summary.outputs.duration }}
+      chromium_passed: ${{ steps.summary.outputs.chromium_passed }}
+      chromium_failed: ${{ steps.summary.outputs.chromium_failed }}
+      chromium_duration: ${{ steps.summary.outputs.chromium_duration }}
+      webkit_passed: ${{ steps.summary.outputs.webkit_passed }}
+      webkit_failed: ${{ steps.summary.outputs.webkit_failed }}
+      webkit_duration: ${{ steps.summary.outputs.webkit_duration }}
+
+    env:
+      LOCATION_COOKIE_VALUE: ${{ secrets.LOCATION_COOKIE_VALUE_MANLEY }}
+      CI: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      BASE_URL: https://www.talos.app
+      URL_CATEGORY: /c/fresh-grocery/txafledZ
+      URL_CATEGORY_HEALTH: /c/health/txBAW6Hq
+      URL_DEALS: /deals/shop-all-deals/C6yLbt
+      URL_STOREFRONT: /sf/latest-greatest-latest-greatest-storefront/fDb0Uy
+      URL_PDP: /p/basically-purified-water-24ct-16-9oz/p48913
+      URL_PDP_DETAIL: /p/woodford-reserve-double-oaked-kentucky-straight-bourbon-whiskey-750-ml-90-4-proof/p12082
+      URL_SEARCH_RESULTS: /search?q=water
+      E2E_DELIVERY_ADDRESS: 12 Manley Hot Springs Rd
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Record start time
+        run: date +%s > job-start.txt
+
+      # Node is provided by the container image (v24.x, current LTS) — no
+      # setup-node pin. Bump tracks the image tag, not a hardcoded version.
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Get Yarn cache folder
+        id: yarn-cache
+        run: echo "dir=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: corepack yarn install --immutable
+
+      # WebKit OS deps AND browsers are baked into the container image
+      # (browsers at /ms-playwright, matching the v1.60.0 tag in lockstep with
+      # @playwright/test), so the former sudo install-deps, browser-install,
+      # and browser-cache steps are all gone.
+
+      - name: Generate auth storageState for CI auth specs
+        if: github.event_name != 'workflow_dispatch' || inputs.run_auth
+        env:
+          E2E_PHONE: ${{ secrets.E2E_PHONE }}
+          E2E_OTP: ${{ secrets.E2E_OTP }}
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+        run: |
+          for attempt in 1 2 3; do
+            corepack yarn node --require tsx/cjs \
+              frameworks/playwright/tests/setup/generate-auth.setup.ts && break
+            echo "Attempt $attempt failed"
+            if [ "$attempt" = "3" ]; then exit 1; fi
+            sleep 5
+          done
+
+      - name: Capture web app version
+        if: github.event_name != 'workflow_dispatch' || inputs.run_auth
+        continue-on-error: true
+        run: |
+          corepack yarn node --require tsx/cjs \
+            frameworks/playwright/tests/setup/capture-web-version.setup.ts
+
+      - name: Generate newbie storageState
+        if: github.event_name != 'workflow_dispatch' || inputs.run_newbie
+        env:
+          E2E_PHONE_NEWBIE: ${{ secrets.E2E_PHONE_NEWBIE }}
+          E2E_OTP: ${{ secrets.E2E_OTP }}
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+          LOCATION_COOKIE_VALUE: ${{ secrets.LOCATION_COOKIE_VALUE_MIAMI }}
+        run: |
+          for attempt in 1 2 3; do
+            corepack yarn node --require tsx/cjs \
+              frameworks/playwright/tests/setup/newbie-auth.setup.ts && break
+            echo "Attempt $attempt failed"
+            if [ "$attempt" = "3" ]; then exit 1; fi
+            sleep 5
+          done
+
+      - name: Run authenticated specs (Desktop Chromium)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_auth
+        env:
+          PW_RUN_AUTH_IN_CI: "1"
+          REQUIRE_AUTH_STATE: "1"
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-auth-chromium.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            frameworks/playwright/tests/p1-sanity/account.p1.sanity.spec.ts \
+            frameworks/playwright/tests/p1-sanity/checkout.p1.sanity.spec.ts \
+            frameworks/playwright/tests/regressions/ddz.regression.spec.ts \
+            frameworks/playwright/tests/regressions/alcohol-order-limit.regression.spec.ts \
+            frameworks/playwright/tests/regressions/contact-delivery.regression.spec.ts \
+            --project="chromium-headless" \
+            --workers=1 \
+            --reporter=junit || true
+
+      - name: Save Desktop Chromium auth artifacts
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_auth)
+        run: |
+          cp -r artifacts/playwright/test-results artifacts/playwright/test-results-auth-chromium || true
+
+      - name: Run guest suite (Desktop Chromium)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_chromium
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-guest-chromium.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            --project="chromium-headless" \
+            --grep-invert "@auth" \
+            --reporter=junit || true
+
+      - name: Save Desktop Chromium guest artifacts
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_chromium)
+        run: |
+          cp -r artifacts/playwright/test-results artifacts/playwright/test-results-guest-chromium || true
+
+      - name: Kill Chromium processes before WebKit
+        if: always()
+        run: |
+          pkill -9 -f "[Cc]hromium" || true
+          pkill -9 -f "[Cc]hrome" || true
+          sleep 3
+
+      - name: Record WebKit start time
+        if: always()
+        run: date +%s > webkit-start.txt
+
+      - name: Run authenticated specs (Mobile WebKit)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_auth
+        env:
+          PW_RUN_AUTH_IN_CI: "1"
+          REQUIRE_AUTH_STATE: "1"
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-auth-webkit.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            frameworks/playwright/tests/p1-sanity/account.p1.sanity.spec.ts \
+            frameworks/playwright/tests/p1-sanity/checkout.p1.sanity.spec.ts \
+            --project="mobile-webkit-headless" \
+            --workers=1 \
+            --reporter=junit || true
+
+      - name: Save Mobile WebKit auth artifacts
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_auth)
+        run: |
+          cp -r artifacts/playwright/test-results artifacts/playwright/test-results-auth-webkit || true
+
+      - name: Kill WebKit processes before guest run
+        if: always()
+        run: |
+          pkill -9 -f "[Ww]eb[Kk]it" || true
+          pkill -9 -f "[Ww]kb2[Ww]eb" || true
+          sleep 3
+
+      - name: Run guest suite (Mobile WebKit)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_webkit
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-guest-webkit.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            --project="mobile-webkit-headless" \
+            --grep-invert "@auth|Site Health" \
+            --reporter=junit || true
+
+      - name: Run newbie suite (Desktop Chromium)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_newbie
+        env:
+          PW_RUN_AUTH_IN_CI: "1"
+          REQUIRE_AUTH_STATE: "1"
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+          LOCATION_COOKIE_VALUE: ${{ secrets.LOCATION_COOKIE_VALUE_MIAMI }}
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-newbie-chromium.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            frameworks/playwright/tests/newbie/newbie.spec.ts \
+            --project="chromium-headless" \
+            --workers=1 \
+            --reporter=junit || true
+
+      - name: Save newbie Chromium artifacts
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_newbie)
+        run: |
+          cp -r artifacts/playwright/test-results artifacts/playwright/test-results-newbie-chromium || true
+
+      - name: Run newbie suite (Mobile WebKit)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_newbie
+        env:
+          PW_RUN_AUTH_IN_CI: "1"
+          REQUIRE_AUTH_STATE: "1"
+          E2E_FORCE_WHITELISTED_ANON_ID: "1"
+          LOCATION_COOKIE_VALUE: ${{ secrets.LOCATION_COOKIE_VALUE_MIAMI }}
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: report-newbie-webkit.xml
+        run: |
+          corepack yarn playwright test \
+            --config frameworks/playwright/playwright.config.ts \
+            frameworks/playwright/tests/newbie/newbie.spec.ts \
+            --project="mobile-webkit-headless" \
+            --workers=1 \
+            --reporter=junit || true
+
+      - name: Save newbie WebKit artifacts
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.run_newbie)
+        run: |
+          cp -r artifacts/playwright/test-results artifacts/playwright/test-results-newbie-webkit || true
+
+      - name: Upload Playwright test artifacts (traces, screenshots)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results-us
+          path: |
+            artifacts/playwright/test-results
+            artifacts/playwright/test-results-auth-chromium
+            artifacts/playwright/test-results-guest-chromium
+            artifacts/playwright/test-results-auth-webkit
+            artifacts/playwright/test-results-newbie-chromium
+            artifacts/playwright/test-results-newbie-webkit
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Publish test summary
+        id: summary
+        if: always()
+        run: |
+          python3 << 'EOF'
+          import xml.etree.ElementTree as ET, os, glob, sys, json, time
+
+          labels = {
+              "report-auth-chromium.xml":    "Auth (Desktop Chromium)",
+              "report-guest-chromium.xml":   "Desktop Chromium",
+              "report-auth-webkit.xml":      "Auth (Mobile WebKit)",
+              "report-guest-webkit.xml":     "Mobile WebKit",
+              "report-newbie-chromium.xml":  "Newbie (Desktop Chromium)",
+              "report-newbie-webkit.xml":    "Newbie (Mobile WebKit)",
+          }
+
+          summary_rows = []
+          failure_sections = []
+          any_failures = False
+          total_passed_all = 0
+          total_failed_all = 0
+          chromium_passed_total = 0
+          chromium_failed_total = 0
+          webkit_passed_total = 0
+          webkit_failed_total = 0
+          chromium_files = {"report-auth-chromium.xml", "report-guest-chromium.xml", "report-newbie-chromium.xml"}
+          webkit_files   = {"report-auth-webkit.xml",   "report-guest-webkit.xml",   "report-newbie-webkit.xml"}
+
+          for path in sorted(glob.glob("report-*.xml")):
+              label = labels.get(path, path)
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception:
+                  continue
+
+              total    = int(root.get("tests",    0))
+              failures = int(root.get("failures", 0))
+              skipped  = int(root.get("skipped",  0))
+              errors   = int(root.get("errors",   0))
+              passed   = total - failures - skipped - errors
+              total_passed_all += passed
+              total_failed_all += failures + errors
+              if path in chromium_files:
+                  chromium_passed_total += passed
+                  chromium_failed_total += failures + errors
+              elif path in webkit_files:
+                  webkit_passed_total += passed
+                  webkit_failed_total += failures + errors
+
+              if failures + errors > 0:
+                  any_failures = True
+                  status = "❌"
+              else:
+                  status = "✅"
+
+              summary_rows.append(f"| {status} {label} | {passed} | {failures + errors} | {skipped} |")
+
+              failure_details = []
+              for tc in root.iter("testcase"):
+                  msg_el = tc.find("failure")
+                  if msg_el is None:
+                      msg_el = tc.find("error")
+                  if msg_el is not None:
+                      name = tc.get("name", "Unknown")
+                      msg = (msg_el.text or msg_el.get("message", "")).strip()
+                      if len(msg) > 2000:
+                          msg = msg[:2000] + "\n... (truncated)"
+                      failure_details.append(f"**{name}**\n```\n{msg}\n```")
+
+              if not failure_details and failures + errors > 0:
+                  failure_details.append(f"**{failures + errors} test(s) failed** — no details in XML")
+
+              if failure_details:
+                  body = "\n\n".join(failure_details)
+                  failure_sections.append(
+                      f"<details>\n<summary>❌ {label} — Failures</summary>\n\n{body}\n\n</details>"
+                  )
+
+          lines = [
+              "## Test Summary", "",
+              "| Suite | ✅ Passed | ❌ Failed | ⏭️ Skipped |",
+              "|---|---|---|---|",
+          ]
+          lines.extend(summary_rows or ["| — | — | — | — |"])
+          if failure_sections:
+              lines.append("")
+              lines.extend(failure_sections)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("\n".join(lines) + "\n")
+
+          def fmt_dur(s):
+              m, sec = divmod(max(s, 0), 60)
+              return f"{m}m {sec}s" if m else f"{sec}s"
+
+          now = int(time.time())
+          duration = "—"
+          chromium_duration = "—"
+          webkit_duration = "—"
+          try:
+              job_start = int(open("job-start.txt").read().strip())
+              duration = fmt_dur(now - job_start)
+              try:
+                  webkit_start = int(open("webkit-start.txt").read().strip())
+                  chromium_duration = fmt_dur(webkit_start - job_start)
+                  webkit_duration = fmt_dur(now - webkit_start)
+              except Exception:
+                  pass
+          except Exception:
+              pass
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as go:
+              go.write(f"passed={total_passed_all}\n")
+              go.write(f"failed={total_failed_all}\n")
+              go.write(f"duration={duration}\n")
+              go.write(f"chromium_passed={chromium_passed_total}\n")
+              go.write(f"chromium_failed={chromium_failed_total}\n")
+              go.write(f"chromium_duration={chromium_duration}\n")
+              go.write(f"webkit_passed={webkit_passed_total}\n")
+              go.write(f"webkit_failed={webkit_failed_total}\n")
+              go.write(f"webkit_duration={webkit_duration}\n")
+
+          sys.exit(1 if any_failures else 0)
+          EOF
+
+      - name: Write daily results artifact
+        if: always()
+        env:
+          CHROMIUM_PASSED: ${{ steps.summary.outputs.chromium_passed }}
+          CHROMIUM_FAILED: ${{ steps.summary.outputs.chromium_failed }}
+          CHROMIUM_DURATION: ${{ steps.summary.outputs.chromium_duration }}
+          WEBKIT_PASSED: ${{ steps.summary.outputs.webkit_passed }}
+          WEBKIT_FAILED: ${{ steps.summary.outputs.webkit_failed }}
+          WEBKIT_DURATION: ${{ steps.summary.outputs.webkit_duration }}
+          OUTCOME: ${{ steps.summary.outcome }}
+          RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, xml.etree.ElementTree as ET, glob
+          labels = {
+              "report-auth-chromium.xml":    "Auth (Desktop Chromium)",
+              "report-guest-chromium.xml":   "Desktop Chromium",
+              "report-auth-webkit.xml":      "Auth (Mobile WebKit)",
+              "report-guest-webkit.xml":     "Mobile WebKit",
+              "report-newbie-chromium.xml":  "Newbie (Desktop Chromium)",
+              "report-newbie-webkit.xml":    "Newbie (Mobile WebKit)",
+          }
+          chromium_files = {"report-auth-chromium.xml", "report-guest-chromium.xml", "report-newbie-chromium.xml"}
+          webkit_files   = {"report-auth-webkit.xml",   "report-guest-webkit.xml",   "report-newbie-webkit.xml"}
+          suites = {}
+          for path in sorted(glob.glob("report-*.xml")):
+              browser = 'chromium' if path in chromium_files else 'webkit' if path in webkit_files else None
+              if not browser:
+                  continue
+              label = labels.get(path, path)
+              try:
+                  root = ET.parse(path).getroot()
+                  suite_nodes = root.findall("testsuite") if root.tag == "testsuites" else [root]
+                  total = failures = skipped = errors = 0
+                  names = []
+                  for s in suite_nodes:
+                      total    += int(s.get("tests",    0))
+                      failures += int(s.get("failures", 0))
+                      skipped  += int(s.get("skipped",  0))
+                      errors   += int(s.get("errors",   0))
+                      f = int(s.get("failures", 0)) + int(s.get("errors", 0))
+                      if f == 0:
+                          f = sum(1 for tc in s if tc.find("failure") is not None or tc.find("error") is not None)
+                      if f > 0:
+                          n = s.get("name", "").strip()
+                          if n and n not in names:
+                              names.append(n)
+                  if total == 0:
+                      total    = sum(1 for _ in root.iter("testcase"))
+                      failures = sum(1 for tc in root.iter("testcase") if tc.find("failure") is not None)
+                      errors   = sum(1 for tc in root.iter("testcase") if tc.find("error")   is not None)
+                  suites[label] = {
+                      "passed": total - failures - skipped - errors,
+                      "failed": failures + errors,
+                      "skipped": skipped,
+                      "failed_tests": names,
+                      "browser": browser,
+                  }
+              except Exception:
+                  pass
+          # Per-suite breakdown lets the daily summary merge a partial rerun (e.g.
+          # just the one suite that failed) with an earlier full run from today,
+          # instead of the summary having to treat this run's data as the whole day.
+          failed_tests = {'chromium': [], 'webkit': []}
+          for e in suites.values():
+              for n in e["failed_tests"]:
+                  if n not in failed_tests[e["browser"]]:
+                      failed_tests[e["browser"]].append(n)
+          if not failed_tests['chromium'] and not failed_tests['webkit']:
+              failed_tests = {}
+          try:
+              with open('web-version.txt') as f:
+                  build_version = f.read().strip()
+          except FileNotFoundError:
+              build_version = ''
+          data = {
+              'result': os.environ.get('OUTCOME', 'failure'),
+              'chromium_passed': int(os.environ.get('CHROMIUM_PASSED') or 0),
+              'chromium_failed': int(os.environ.get('CHROMIUM_FAILED') or 0),
+              'chromium_duration': os.environ.get('CHROMIUM_DURATION') or '—',
+              'webkit_passed': int(os.environ.get('WEBKIT_PASSED') or 0),
+              'webkit_failed': int(os.environ.get('WEBKIT_FAILED') or 0),
+              'webkit_duration': os.environ.get('WEBKIT_DURATION') or '—',
+              'run_url': os.environ.get('RUN_URL', ''),
+              'build_version': build_version,
+              'failed_tests': failed_tests,
+              'suites': suites,
+          }
+          with open('daily-results.json', 'w') as f:
+              json.dump(data, f)
+          PYEOF
+
+      - name: Upload daily results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: daily-results-playwright-us
+          path: daily-results.json
+          if-no-files-found: warn
+          retention-days: 2
+
+      - name: Post-run cleanup
+        if: always()
+        run: |
+          rm -rf artifacts/ report-*.xml job-start.txt webkit-start.txt daily-results.json web-version.txt || true
+          rm -rf tests/.auth/ || true

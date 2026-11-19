@@ -1,0 +1,103 @@
+appId: com.talos.app
+
+# Runs regardless of pass/fail, matching ios-talos-ai-checkout.yml, so a mid-flow
+# assertion failure doesn't leave Talos AI open for the next suite to inherit.
+onFlowComplete:
+  - launchApp
+  - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-pdp-close"
+      commands:
+        - tapOn:
+            id: "talos-ai-pdp-close"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-chat-input"
+      commands:
+        - runFlow: subflows/talos-ai-exit.yml
+  - extendedWaitUntil:
+      visible: "Search"
+      timeout: 15000
+      optional: true
+  - stopApp
+---
+
+# NOTE: unlike checkout, the Talos AI PDP overlay (GoAIProductDetailPage) is still a
+# gorhom BottomSheetScrollView. It was long blocked on iOS a11y (see
+# reference_pdp_maestro_accessibility_tree_broken and the prior "permanently
+# blocked" note in project_talos_ai_maestro), but verified live 2026-09-17 that the
+# sheet's full content — title, price, variant chips, nutrition, crash text — is
+# now exposed to the XCUITest a11y tree. Mirrors android-talos-ai-product-detail.yml.
+
+- launchApp
+- waitForAnimationToEnd
+- runFlow: ../../ios/subflows/dismiss-home-modals.yml
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# ── TALOS-121911: variant selector crash on switch ────────────────────────────
+# Tapping a size/pack variant chip on the PDP swapped state to the new variant
+# before its data (e.g. images/nutrition array) had resolved, so a `.length`
+# access on the still-undefined field crashed the screen with "Cannot read
+# property 'length' of undefined". Ask Talos AI for a product with multiple
+# variants and open its PDP from within Talos AI.
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Show me Pepsi 12 pack 12oz can"
+- tapOn:
+    id: "talos-ai-submit-button"
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Pepsi 12pk 12oz Can"
+    timeout: 25000
+# Unlike Android (where only the tile's image region is clickable in prod), the
+# product title text itself is tappable on iOS. Tapping it opens the PDP.
+- tapOn: "Pepsi 12pk 12oz Can"
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-pdp-close"
+    timeout: 10000
+
+# Confirm the default variant loaded before switching. The header's size/pack
+# line uses "|" (e.g. "12oz | 12pk"); the variant chip below it has a different,
+# compound accessibility label ("<size>, <price>, <unit price>") handled next.
+- assertVisible: "Pepsi 12pk 12oz Can"
+- assertVisible: "12oz | 12pk"
+
+# Switch to a different size/pack variant — the exact repro step from TALOS-121911.
+# Each variant chip's accessibility label is the full "<size>, <price>, <unit price>"
+# string, not just the size/pack text, so match it as a regex prefix.
+- tapOn: "7.5oz · 10pk,.*"
+- waitForAnimationToEnd
+
+# Regression guard: PDP must swap in place, not crash
+- assertNotVisible: "(?i)Oops! There's an Error"
+- assertNotVisible: "(?i)Cannot read propert(y|ies)"
+- assertVisible: "Pepsi 10pk 7.5oz Mini Can"
+
+# Switch back so the variant selector itself is exercised in both directions
+- tapOn: "12oz · 12pk,.*"
+- waitForAnimationToEnd
+- assertNotVisible: "(?i)Oops! There's an Error"
+- assertVisible: "Pepsi 12pk 12oz Can"
+
+- tapOn:
+    id: "talos-ai-pdp-close"
+- waitForAnimationToEnd
+
+# Future PDP regression checks should be appended below this line.
+
+- stopApp

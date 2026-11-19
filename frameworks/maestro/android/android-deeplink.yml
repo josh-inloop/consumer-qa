@@ -1,0 +1,160 @@
+appId: com.talos.app
+---
+
+# Login only if not already authenticated — avoids a redundant OTP when the auth session
+# from the main suite login is still active (deeplinks runs before guest in CI).
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: "PhoneInput"
+    commands:
+      - runFlow: subflows/login.yml
+
+# ── 1: Custom scheme → Home ───────────────────────────────────────────────
+
+# Cold
+- stopApp
+- openLink: "talos://open/"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "AddressBarAddressName"
+    timeout: 15000
+- assertVisible:
+    id: "AddressBarAddressName"
+# A live home-screen promo banner can push the collection header below the fold —
+# scroll into view instead of asserting in place.
+- scrollUntilVisible:
+    element:
+      id: "ProductCollectionHeader"
+    direction: DOWN
+    timeout: 15000
+
+# Warm
+- launchApp
+- openLink: "talos://open/"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "AddressBarAddressName"
+    timeout: 15000
+- assertVisible:
+    id: "AddressBarAddressName"
+- scrollUntilVisible:
+    element:
+      id: "ProductCollectionHeader"
+    direction: DOWN
+    timeout: 15000
+
+# ── 2: App Link → Snacks category ─────────────────────────────────────────
+
+# Cold
+- stopApp
+- openLink: "https://link.talos.app/snacks"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 20000
+- assertVisible:
+    id: "ProductTileImage"
+
+# Warm
+- launchApp
+- openLink: "https://link.talos.app/snacks"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 20000
+- assertVisible:
+    id: "ProductTileImage"
+
+# ── 3: Ablink (Braze) → Change email address ──────────────────────────────
+
+# Cold
+- stopApp
+- openLink: "https://ablink.noreply.talos.app/uni/ls/click?upn=MK-2BTxex-2BhmoEowISzaGodiGYL-2BDyyTE3FAJJf0H4jsdmpeOpA-2FbiMUJqkV6Pmtv6xNZDm1E730gi0qeK6qD1obrGHM-2FjMEeWG3m1jdN45E5Nbenl5gyJUBNKXjTQpfU6GQdEK6rnay3sOPAIiVHZTp-2B5T4-2ByJXQEq3ca63GnZNCgUdrmqliBgKHWeYOmOgF3rAbULZyBC007iRaWX-2FSY4U4TfdElITJJgu7w2UAWXtg-3DgdC7_XHv0-2BZ0FA8yh-2FTmp6AJPFK74Xntnoqo4tsmytfs0Y62AQzjCdUuvp4OCFB6ejLvpSkkyGYHNQi29SQNlDEGwgQ0aD3N8IZmeuVQXRsIsjWXJZxV2qtIWTFm9oL2Sd8zZuZlRxudAE4ec3Omvwlh-2B2RZbO1JWhKzi6GPCPd86xLITt3I-2BgnCrMwoI-2BC2F6y8Zu1STAvvA4at5-2BWAXOW0EQOIborcSKwjvrfRBewp0B1WWYqfYrB9QWCg4qRbWI1XkGSDNHJHbzKhRFWokvWor7gbRxMR-2BJRNs7uG4-2BnasEjVszcfBGd68o36uDn0pwTzYuWWB5xUvMbztUH-2BWMchzhts-2BlLtK9k7DUiE13YqwYUD6YYRaOeB7kfS0RczeQ2wiXt22zpadc0pG6b7WMCG2tEmj1wX5yVFpwRwZbOX2XAUD5B2fsOQouuBXE1e2PYTzG6jdRD8e30XDUSQyB3bI6zllVxNZFrK214a9nmSMgxA2i5qhQyn54OT0LX3QfcY3QoshboIVAvPjwyYc7LrrPAXGqCbhXd01xKWa5uAQI86bmHOMdWbpNv5RRG7ietK-2BPqwRTVXjiS49i1BHRj0pcIH-2BfxQ3SOVAhKpvYbvlbyAcwEdRLn-2FVui2teyoUQwnXDS22PskevBVu6cxzB-2FNdI127SN6uu-2B2AklYSSnWrm0UapTG90bmrCernNjpQPYdZTkYxKuRoDqF-2BaEbQJ-2FPU-2Bw-3D-3D"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Change email address"
+    timeout: 15000
+- assertVisible:
+    text: "Change email address"
+
+# ── 4: Custom scheme → Basket ─────────────────────────────────────────────
+
+# Cold
+- stopApp
+- openLink: "talos://open/go/basket"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "My Bag"
+    timeout: 15000
+- assertVisible:
+    text: "My Bag"
+
+# Warm
+- launchApp
+- openLink: "talos://open/go/basket"
+- runFlow:
+    when:
+      visible: "Open with"
+    commands:
+      - tapOn:
+          text: "Talos"
+          index: 0
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "My Bag"
+    timeout: 15000
+- assertVisible:
+    text: "My Bag"
+
+- stopApp

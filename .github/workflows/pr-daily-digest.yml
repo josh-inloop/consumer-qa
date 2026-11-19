@@ -1,0 +1,103 @@
+name: PR Daily Digest
+
+on:
+  workflow_dispatch:
+    inputs:
+      slack_target:
+        description: "Slack channel or user ID to post to (overrides APP_DIGEST_CHANNEL secret)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "5 12 * * *"  # 8:05 AM EDT / 7:05 AM EST
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-repo-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      TZ: "America/New_York"
+      TARGET_REPO: ${{ secrets.TARGET_REPO }}            # e.g. owner/app-repo
+      BASE_BRANCH: "dev"
+      APP_REPO_TOKEN: ${{ secrets.APP_REPO_ACCESS }}  # org-wide shared token, not tied to a personal account
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install system deps (gh, jq)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
+          if ! command -v gh >/dev/null 2>&1; then
+            type -p curl >/dev/null || sudo apt-get install -y curl
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+              | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+
+      - name: Install JS deps
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --immutable
+
+      - name: Validate secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${TARGET_REPO:-}" ]; then
+            echo "ERROR: Missing TARGET_REPO secret (should be like 'owner/app-repo')."
+            exit 1
+          fi
+          if [ -z "${APP_REPO_TOKEN:-}" ]; then
+            echo "ERROR: Missing APP_REPO_ACCESS secret."
+            exit 1
+          fi
+
+      - name: Verify app-repo access
+        env:
+          GH_TOKEN: ${{ env.APP_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh repo view "${TARGET_REPO}" --json name,defaultBranchRef,visibility >/dev/null
+          echo "Verified access to ${TARGET_REPO}"
+
+      - name: Generate digest
+        env:
+          GH_TOKEN: ${{ env.APP_REPO_TOKEN }}
+          TARGET_REPO: ${{ env.TARGET_REPO }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+          TZ: ${{ env.TZ }}
+          SLACK_TARGET: ${{ inputs.slack_target || secrets.APP_DIGEST_CHANNEL }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: node scripts/pr-daily-digest.js
+
+      - name: Post to Slack
+        if: ${{ hashFiles('slack-payload.json') != '' }}
+        uses: slackapi/slack-github-action@v3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: slack-payload.json
+
+      - name: Cleanup
+        if: always()
+        run: rm -f slack-payload.json

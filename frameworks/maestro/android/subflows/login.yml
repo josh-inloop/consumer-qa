@@ -1,0 +1,74 @@
+appId: com.talos.app
+---
+
+# Launch app fresh and log in via OTP
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "PhoneInput"
+- waitForAnimationToEnd
+
+# Dismiss Google phone number autofill dialog if it appears
+- runFlow:
+    when:
+      visible: "Choose a phone number"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+
+- eraseText: 20
+# Raw digits in chunks — typing dash characters scrambles the new variant's field, and
+# sending the number too fast drops the country code (mirrors the fix verified on iOS).
+- inputText: "${E2E_PHONE_PART1}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_PART2}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_PART3}"
+- waitForAnimationToEnd
+
+# Dismiss Google phone number autofill dialog if it appears after input
+- runFlow:
+    when:
+      visible: "Choose a phone number"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+
+# Auto-submit was removed from the new login flow, so press Enter to advance to the
+# verification step once the number is complete (after any autofill dialog is dismissed).
+- pressKey: Enter
+- waitForAnimationToEnd
+
+# Verification code: six boxes backed by a single input (no id/testID). Anchor the tap to
+# the instruction label and tap the row directly below it. A percentage point tap is
+# fragile — the box row sits at a different %-height on the short CI emulator (~41%, where
+# the old 42% landed) than on a tall phone (~33%), so no single % works for both.
+- tapOn:
+    below:
+      text: "Enter the verification code below"
+- inputText: "${E2E_OTP}"
+- waitForAnimationToEnd
+
+# A "Talos AI" promo sheet animates in over home a beat after login and covers the
+# search bar. Dismiss it BEFORE asserting home — asserting "Search" first races the
+# slide-in and fails behind the sheet. Both steps are tolerant: when the sheet never
+# shows, the optional wait expires and the dismiss is a no-op.
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: dismiss-home-modals.yml
+
+# Wait for home screen to confirm login succeeded
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+# Guard against address drift from a prior suite (e.g. Newbie leaving Miami)
+- runFlow:
+    file: set-address.yml
+    env:
+      TARGET_ADDRESS: "12 Manley"
+
+- stopApp

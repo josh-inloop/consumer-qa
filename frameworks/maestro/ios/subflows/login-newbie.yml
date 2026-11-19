@@ -1,0 +1,43 @@
+appId: com.talos.app
+---
+
+# Launch app fresh and log in via OTP as the newbie user
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Ask App Not to Track"
+    optional: true
+- tapOn:
+    id: "PhoneInput"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_PART1}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_PART2}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_PART3}"
+- waitForAnimationToEnd
+- pressKey: Enter
+- waitForAnimationToEnd
+
+- tapOn:
+    point: "50%,32%"
+- inputText: "${E2E_OTP}"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "swipableAdvertisement_close"
+    commands:
+      - tapOn:
+          id: "swipableAdvertisement_close"
+      - waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000

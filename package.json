@@ -1,0 +1,40 @@
+{
+  "name": "playwright-local-tests",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "yarn@4.3.0",
+  "description": "Local Playwright E2E tests",
+  "type": "commonjs",
+  "scripts": {
+    "codegen": "playwright codegen https://www.talos.app/",
+    "test": "playwright test -c frameworks/playwright/playwright.config.ts",
+    "test:ui": "playwright test -c frameworks/playwright/playwright.config.ts --ui",
+    "test:chrome:headed": "playwright test -c frameworks/playwright/playwright.config.ts --project=\"chrome-headed\" --workers=1",
+    "test:mobile-webkit:headed": "playwright test -c frameworks/playwright/playwright.config.ts --project=\"mobile-webkit-headed\" --workers=1",
+    "test:chromium:headless": "playwright test -c frameworks/playwright/playwright.config.ts --project=\"chromium-headless\" --workers=1",
+    "test:mobile-webkit:headless": "CI=true playwright test -c frameworks/playwright/playwright.config.ts --project=\"mobile-webkit-headless\"",
+    "test:headless": "CI=true playwright test -c frameworks/playwright/playwright.config.ts --project=\"chromium-headless\" --project=\"mobile-webkit-headless\" --workers=1",
+    "test:all": "playwright test -c frameworks/playwright/playwright.config.ts --project=\"chrome-headed\" --project=\"mobile-webkit-headed\" --project=\"chromium-headless\" --workers=1",
+    "pw:list": "playwright test -c frameworks/playwright/playwright.config.ts --list",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.0.3",
+    "dotenv": "^17.2.3",
+    "playwright": "1.60.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.19"
+  },
+  "resolutions": {
+    "http-cache-semantics": "^4.3.0",
+    "minimatch": "^11.0.1",
+    "glob": "^14.0.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

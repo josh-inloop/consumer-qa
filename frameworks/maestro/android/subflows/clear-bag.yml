@@ -1,0 +1,50 @@
+appId: com.talos.app
+---
+# Navigate to bag and remove all items, then return to home.
+# ProductQuantityTool_Decrement only appears when items are present, so it
+# serves as both the "bag has items" guard and the loop exit condition.
+- tapOn:
+    id: "bagTab"
+- waitForAnimationToEnd
+
+# Dismiss product swap suggestion modal if a leftover item triggers it
+- runFlow:
+    when:
+      visible:
+        text: "Leave it"
+    commands:
+      - tapOn:
+          text: "Leave it"
+      - waitForAnimationToEnd
+
+# Dismiss Braze in-app message (e.g. promo banners) if one covers the bag tab
+# transition — these are native overlays outside the app's own popup copy/ids.
+- runFlow:
+    when:
+      visible:
+        id: "com.talos.app:id/com_braze_inappmessage_modal_close_button"
+    commands:
+      - tapOn:
+          id: "com.talos.app:id/com_braze_inappmessage_modal_close_button"
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "BagPage"
+    timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: "ProductQuantityTool_Decrement"
+    commands:
+      - repeat:
+          while:
+            visible:
+              id: "ProductQuantityTool_Decrement"
+          commands:
+            - tapOn:
+                id: "ProductQuantityTool_Decrement"
+                index: 0
+            - waitForAnimationToEnd
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd

@@ -1,0 +1,549 @@
+name: Daily Automation Summary
+
+on:
+  schedule:
+    - cron: "0 13 * * *"  # 13:00 UTC — 9:00 AM EDT (summer) / 8:00 AM EST (winter) — preview DM
+    - cron: "5 22 * * *"  # 22:05 UTC — 6:05 PM EDT (summer) / 5:05 PM EST (winter) — real send
+  workflow_dispatch:
+    inputs:
+      slack_channel:
+        description: "Slack channel or user ID for notifications"
+        required: false
+        default: ''
+
+concurrency:
+  group: daily-automation-summary
+  cancel-in-progress: true
+
+jobs:
+  summary:
+    name: "Daily Automation Summary"
+    runs-on: self-hosted-base-nat
+    permissions:
+      actions: write
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 13 * * *" ]; then
+            echo "is_preview=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_preview=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and post daily summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ inputs.slack_channel || (steps.mode.outputs.is_preview == 'true' && secrets.QA_PREVIEW_DM || secrets.QA_ALERTS_CHANNEL) }}
+          IS_PREVIEW: ${{ steps.mode.outputs.is_preview }}
+          REPO: ${{ github.repository }}
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, re, urllib.request, urllib.parse, tempfile, shutil, zipfile
+          from datetime import datetime, timezone
+
+          repo          = os.environ['REPO']
+          token         = os.environ['GH_TOKEN']
+          channel       = os.environ.get('SLACK_CHANNEL') or ''
+          dashboard_url = os.environ.get('DASHBOARD_URL', '')
+
+          def gh_get(path, **params):
+              url = f'https://api.github.com/{path}'
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              req = urllib.request.Request(url, headers={
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              })
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)
+
+          def download_artifact(artifact_id, dest):
+              # GitHub redirects to a pre-signed Azure Blob URL. Sending the
+              # Authorization header to Azure causes a 401, so we stop at the
+              # redirect, grab the Location, then fetch without auth.
+              class NoRedirect(urllib.request.HTTPRedirectHandler):
+                  def http_error_302(self, req, fp, code, msg, headers):
+                      raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
+                  http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
+
+              api_url = f'https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip'
+              req = urllib.request.Request(api_url, headers={
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              })
+              try:
+                  urllib.request.build_opener(NoRedirect).open(req)
+                  raise RuntimeError('Expected redirect but got 200')
+              except urllib.error.HTTPError as e:
+                  if e.code not in (301, 302, 303, 307, 308):
+                      raise
+                  download_url = e.headers['Location']
+
+              zip_path = os.path.join(dest, 'artifact.zip')
+              with urllib.request.urlopen(download_url) as r:
+                  with open(zip_path, 'wb') as f:
+                      f.write(r.read())
+              with zipfile.ZipFile(zip_path) as zf:
+                  zf.extractall(dest)
+              os.remove(zip_path)
+
+          WORKFLOWS = [
+              ('playwright-web-production-us.yml',        'daily-results-playwright-us',             'playwright',    'US'),
+              ('playwright-web-production-uk.yml',        'daily-results-playwright-uk',             'playwright',    'UK'),
+              ('maestro-android-production-us.yml',       'daily-results-maestro-android-us',        'android',       'US'),
+              ('maestro-android-production-uk.yml',       'daily-results-maestro-android-uk',        'android',       'UK'),
+              ('maestro-ios-production-us.yml',           'daily-results-maestro-ios-us',            'ios',           'US'),
+              ('maestro-ios-production-uk.yml',           'daily-results-maestro-ios-uk',            'ios',           'UK'),
+              ('maestro-talos-ai-android-production-us.yml', 'daily-results-maestro-talos-ai-android-us',  'talos_ai_android', 'US'),
+              ('maestro-talos-ai-ios-production-us.yml',     'daily-results-maestro-talos-ai-ios-us',      'talos_ai_ios',     'US'),
+          ]
+
+          # Suites listed in docs/silenced-suites.json are excluded from pass/fail
+          # counts and alerting below — see that file for when/why to use this.
+          # This is for known infra/build-pipeline breakage, never for a real app
+          # regression someone just wants quiet.
+          try:
+              with open('docs/silenced-suites.json') as f:
+                  _silence_doc = json.load(f)
+                  _silence_cfg = _silence_doc.get('silenced', [])
+                  _notes_cfg = _silence_doc.get('notes', [])
+          except FileNotFoundError:
+              _silence_cfg = []
+              _notes_cfg = []
+          SILENCED = {}
+          for entry in _silence_cfg:
+              for market in entry['markets']:
+                  SILENCED[(entry['suite'], market)] = entry
+
+          today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+          def merge_run_datas(run_datas, suite_type):
+              # run_datas: [(run, data), ...] sorted ascending by when the run was created.
+              # A later run's per-suite entry for a given label always wins — this is what
+              # lets a same-day partial rerun (only the suite that failed re-enabled) patch
+              # just that suite's numbers into an earlier full run's results, instead of the
+              # partial run's missing suites reading as if they never ran at all.
+              merged_suites = {}
+              for _, d in run_datas:
+                  for label, entry in (d.get('suites') or {}).items():
+                      merged_suites[label] = entry
+
+              # Metadata (build_version/run_url/duration) comes from the "fullest" run of
+              # the day — the one covering the most suite labels — not just whichever ran
+              # last. Otherwise a small same-day workflow_dispatch (e.g. reproducing or
+              # verifying an unrelated fix against one suite) becomes "latest" and its
+              # blank build_version / unrelated run_url overwrite the real scheduled run's.
+              latest_run, latest_data = max(
+                  run_datas,
+                  key=lambda rd: (len(rd[1].get('suites') or {}), rd[0]['created_at'])
+              )
+              if not merged_suites:
+                  # No run today carries the new per-suite breakdown (e.g. the day's only
+                  # run predates this rollout) — fall back to that run's own flat totals.
+                  return latest_data
+
+              if suite_type == 'playwright':
+                  chromium = [e for e in merged_suites.values() if e.get('browser') == 'chromium']
+                  webkit   = [e for e in merged_suites.values() if e.get('browser') == 'webkit']
+                  failed_tests = {'chromium': [], 'webkit': []}
+                  for e in merged_suites.values():
+                      bucket = e.get('browser')
+                      if bucket in failed_tests:
+                          for n in e.get('failed_tests') or []:
+                              if n not in failed_tests[bucket]:
+                                  failed_tests[bucket].append(n)
+                  if not failed_tests['chromium'] and not failed_tests['webkit']:
+                      failed_tests = {}
+                  chromium_failed = sum(e.get('failed', 0) for e in chromium)
+                  webkit_failed   = sum(e.get('failed', 0) for e in webkit)
+                  return {
+                      'result': 'failure' if (chromium_failed + webkit_failed) > 0 else 'success',
+                      'chromium_passed':   sum(e.get('passed', 0) for e in chromium),
+                      'chromium_failed':   chromium_failed,
+                      'chromium_duration': latest_data.get('chromium_duration', '—'),
+                      'webkit_passed':     sum(e.get('passed', 0) for e in webkit),
+                      'webkit_failed':     webkit_failed,
+                      'webkit_duration':   latest_data.get('webkit_duration', '—'),
+                      'run_url':           latest_data.get('run_url', ''),
+                      'build_version':     latest_data.get('build_version', ''),
+                      'failed_tests':      failed_tests,
+                  }
+
+              # A run from before this per-suite breakdown existed carries only flat
+              # passed/failed totals (no 'suites' key), covering every suite the
+              # workflow runs. If a same-day run after the rollout only re-enabled
+              # some of those suites, merged_suites alone would understate the day
+              # (the untouched suites the legacy run already covered would vanish).
+              # Reconcile by starting from the legacy run's flat totals and patching
+              # in just the labels the newer run(s) actually re-reported, using the
+              # legacy run's failed_tests map to know how many failures each patched
+              # label had contributed to the old flat total.
+              legacy_runs = [d for _, d in run_datas if not d.get('suites')]
+              if legacy_runs and merged_suites:
+                  baseline = legacy_runs[-1]
+                  passed = int(baseline.get('passed', 0) or 0)
+                  failed = int(baseline.get('failed', 0) or 0)
+                  failed_tests = dict(baseline.get('failed_tests') or {})
+                  for label, entry in merged_suites.items():
+                      failed -= len(failed_tests.pop(label, None) or [])
+                      passed += entry.get('passed', 0)
+                      failed += entry.get('failed', 0)
+                      if entry.get('failed_tests'):
+                          failed_tests[label] = entry['failed_tests']
+              else:
+                  failed = sum(e.get('failed', 0) for e in merged_suites.values())
+                  passed = sum(e.get('passed', 0) for e in merged_suites.values())
+                  failed_tests = {label: e['failed_tests'] for label, e in merged_suites.items() if e.get('failed_tests')}
+              return {
+                  'result':       'failure' if failed > 0 else 'success',
+                  'passed':       passed,
+                  'failed':       failed,
+                  'duration':     latest_data.get('duration', '—'),
+                  'build_version': latest_data.get('build_version', ''),
+                  'run_url':      latest_data.get('run_url', ''),
+                  'failed_tests': failed_tests,
+              }
+
+          tmpdir  = tempfile.mkdtemp()
+          results = {}
+
+          for wf_file, artifact_name, suite, market in WORKFLOWS:
+              key = (suite, market)
+              if key in SILENCED:
+                  results[key] = None
+                  continue
+              try:
+                  # The API's own status=completed filter serves a stale index that can lag
+                  # days behind — it has been seen omitting a workflow's last dozen runs,
+                  # including today's, while the unfiltered list is reliably fresh. Fetch
+                  # unfiltered and filter status client-side instead.
+                  runs = gh_get(f'repos/{repo}/actions/workflows/{wf_file}/runs', per_page=10)
+                  todays_runs = sorted(
+                      (r for r in runs.get('workflow_runs', [])
+                       if r.get('status') == 'completed' and r.get('created_at', '').startswith(today_str)),
+                      key=lambda r: r['created_at']
+                  )
+                  if not todays_runs:
+                      print(f'Warning: no completed runs today for {wf_file}')
+                      results[key] = None
+                      continue
+
+                  run_datas = []
+                  for run in todays_runs:
+                      run_id = run['id']
+                      try:
+                          arts = gh_get(f'repos/{repo}/actions/runs/{run_id}/artifacts')
+                          # A retried run keeps a same-named artifact from every attempt under
+                          # the same run_id, and the API doesn't return them in attempt order —
+                          # take the most recently created one so a stale failed attempt's
+                          # results can't shadow the final attempt's.
+                          matches = [a for a in arts.get('artifacts', []) if a['name'] == artifact_name]
+                          if not matches:
+                              continue
+                          artifact = max(matches, key=lambda a: a['created_at'])
+                          dest = os.path.join(tmpdir, f'{suite}-{market.lower()}-{run_id}')
+                          os.makedirs(dest, exist_ok=True)
+                          download_artifact(artifact['id'], dest)
+                          with open(os.path.join(dest, 'daily-results.json')) as f:
+                              run_datas.append((run, json.load(f)))
+                      except Exception as e:
+                          print(f'Warning: could not load run {run_id} for {wf_file}: {e}')
+
+                  if not run_datas:
+                      print(f'Warning: no usable daily-results.json today for {wf_file}')
+                      results[key] = None
+                      continue
+
+                  results[key] = merge_run_datas(run_datas, suite)
+
+              except Exception as e:
+                  print(f'Warning: could not load {wf_file}: {e}')
+                  results[key] = None
+
+          shutil.rmtree(tmpdir, ignore_errors=True)
+
+          LABELS = {
+              'playwright':      ('Web',          True),
+              'android':         ('Android',      True),
+              'ios':             ('iOS',           True),
+              'talos_ai_android':   ('Talos AI Android', False),
+              'talos_ai_ios':       ('Talos AI iOS',     False),
+          }
+
+          ORDER = [
+              ('playwright',    'US'), ('playwright',    'UK'),
+              ('android',       'US'), ('android',       'UK'),
+              ('ios',           'US'), ('ios',           'UK'),
+              ('talos_ai_android', 'US'),
+              ('talos_ai_ios',     'US'),
+          ]
+
+          def with_version(label, ver):
+              return f'{label} {ver}' if ver else label
+
+          def fail_count(d):
+              if d is None:
+                  return 0
+              return (int(d.get('failed', 0) or 0)
+                      + int(d.get('chromium_failed', 0) or 0)
+                      + int(d.get('webkit_failed',   0) or 0))
+
+          def is_failing(d):
+              return d is not None and (d.get('result') == 'failure' or fail_count(d) > 0)
+
+          pw_us  = results.get(('playwright', 'US'))
+          pw_uk  = results.get(('playwright', 'UK'))
+          and_us = results.get(('android',    'US'))
+          and_uk = results.get(('android',    'UK'))
+          ios_us = results.get(('ios',        'US'))
+          ios_uk = results.get(('ios',        'UK'))
+
+          web_ver     = (pw_us or pw_uk or {}).get('build_version', '')
+          android_ver = (and_us or and_uk or {}).get('build_version', '')
+          ios_ver     = (ios_us or ios_uk or {}).get('build_version', '')
+
+          VERSION_FOR = {
+              'playwright':    web_ver,
+              'android':       android_ver,
+              'ios':           ios_ver,
+              'talos_ai_android': android_ver,
+              'talos_ai_ios':     ios_ver,
+          }
+
+          active_order = [k for k in ORDER if k not in SILENCED]
+          all_vals = [results.get(k) for k in active_order]
+
+          total_suites      = len(all_vals)
+          failing_suites    = sum(1 for d in all_vals if is_failing(d))
+          unavailable_count = sum(1 for d in all_vals if d is None)
+          any_failure       = failing_suites > 0
+          any_unavailable   = unavailable_count > 0
+
+          if any_failure:
+              color, icon = '#e01e5a', '🚨'
+          elif any_unavailable:
+              color, icon = '#ecb22e', '⚠️'
+          else:
+              color, icon = '#2eb886', '✅'
+
+          if not any_failure and not any_unavailable:
+              summary = f'*All {total_suites} production suites passed*'
+          elif failing_suites and not unavailable_count:
+              summary = f'*{failing_suites} of {total_suites} production suites failed*'
+          elif unavailable_count and not failing_suites:
+              summary = f'*{unavailable_count} of {total_suites} production suites unavailable*'
+          else:
+              summary = f'*{failing_suites} of {total_suites} production suites failed · {unavailable_count} unavailable*'
+
+          breadcrumb_parts = [
+              with_version('Web',     web_ver),
+              with_version('Android', android_ver),
+          ]
+          if ('ios', 'US') not in SILENCED or ('ios', 'UK') not in SILENCED:
+              breadcrumb_parts.append(with_version('iOS', ios_ver))
+          breadcrumb = ' · '.join(breadcrumb_parts)
+
+          _d = datetime.now(timezone.utc)
+          today = _d.strftime('%B ') + str(_d.day) + _d.strftime(', %Y')
+          is_preview = os.environ.get('IS_PREVIEW') == 'true'
+          heading_suffix = ' (Preview)' if is_preview else ''
+
+          # Rides on the summary block itself (see attachment_blocks below), so
+          # no icon or version here — the icon duplicates the colored
+          # attachment bar/header emoji, and the version is already shown in
+          # the breadcrumb line.
+          exception_lines = []
+          for suite, market in active_order:
+              d = results.get((suite, market))
+              label, show_market = LABELS[suite]
+              market_part = f' {market}' if show_market else ''
+              suite_name = f'{label}{market_part}'
+              if d is None:
+                  exception_lines.append(f'{suite_name} · unavailable')
+              elif is_failing(d):
+                  run_url = d.get('run_url', '')
+                  exception_lines.append(f'<{run_url}|{suite_name}>' if run_url else suite_name)
+
+          # Known issues: infra/build-pipeline breakage we've deliberately silenced
+          # (docs/silenced-suites.json), shown separately so it never reads as an
+          # app regression. One combined line per tracking ref, using the same
+          # ⚠️ the dashboard already uses for "unavailable".
+          def ref_label(ref):
+              # GitHub PR link -> "PR #123"
+              m = re.search(r'/pull/(\d+)', ref)
+              if m:
+                  return f'PR #{m.group(1)}'
+              # Jira issue link -> the issue key itself (e.g. SND-6108)
+              m = re.search(r'/browse/([A-Z][A-Z0-9]+-\d+)', ref)
+              if m:
+                  return m.group(1)
+              return ref
+
+          by_ref = {}
+          for entry in _silence_cfg:
+              by_ref.setdefault(entry.get('ref'), []).append(entry)
+
+          silenced_lines = []
+          for ref, entries in by_ref.items():
+              labels = [f'{LABELS[e["suite"]][0]} ({" & ".join(e["markets"])})' for e in entries]
+              details = [e['detail'] for e in entries if e.get('detail')]
+              detail_text = (' ' + ' '.join(details)) if details else ''
+              # 'ref' is optional — a silence can go out without a tracking ticket
+              # when it's a brief, self-explanatory note rather than a tracked
+              # investigation (see 'detail' in docs/silenced-suites.json).
+              tracked = f', tracked in <{ref}|{ref_label(ref)}>' if ref else ''
+              be = 'are' if len(labels) > 1 else 'is'
+              silenced_lines.append(
+                  f'⚠️ {", ".join(labels)} {be} not counted above. Known infrastructure issue, '
+                  f'not an app failure{tracked}.{detail_text}'
+              )
+
+          # Standalone notes (docs/silenced-suites.json "notes"): informational context
+          # that doesn't affect counting/alerting, e.g. flagging that a silence above is
+          # also masking an unrelated real bug tracked elsewhere. 🪲 (not ⚠️, already used
+          # for unavailable/silenced lines) marks it as a real app bug, matching the icon
+          # scripts/weekly-bug-digest.js uses. "text" carries its own Slack mrkdwn links
+          # (every Jira ticket it mentions should be a <url|KEY> link) rather than having
+          # one auto-appended, since a note can reference more than one ticket.
+          note_lines = [f'🪲 {n["text"]}' for n in _notes_cfg]
+
+          # One colored attachment for the whole message (Slack always renders
+          # top-level 'blocks' before 'attachments' with no way to reverse that, and
+          # even an uncolored attachment shows a default gray border — so splitting
+          # the bar across two containers can't give a bar-less second section after
+          # a colored first one). Exceptions keep their own normal-sized section block
+          # each — real failures should stay visually prominent, and the suite count
+          # is small and fixed, so this can't grow unbounded. Known issues (silenced
+          # suites + notes) are joined into a single small/muted context block instead
+          # of one each, since that list can grow indefinitely over time; this keeps
+          # the attachment clear of Slack's ~5-block "Show more" collapse on a normal
+          # day without sacrificing failure visibility.
+          known_issue_lines = silenced_lines + note_lines
+
+          # Exception lines ride on the summary block itself (same sentence,
+          # after a colon) instead of each getting their own section block, to
+          # stay at 5 attachment blocks on a normal day (header, summary,
+          # breadcrumb, divider, known-issues) rather than 6+, which crosses
+          # Slack's "Show more" collapse threshold — without dropping the
+          # divider. The colon replaces summary's closing '*' so the suite
+          # detail reads as part of the same bolded sentence instead of
+          # repeating "failed" or stacking another '·' separator.
+          summary_text = summary
+          if exception_lines:
+              summary_text = summary.rstrip('*') + ':* ' + ' · '.join(exception_lines)
+
+          attachment_blocks = [
+              # Button rides as the header's accessory (right-aligned next to the
+              # title) instead of its own 'actions' block, for the same block-
+              # budget reason as above.
+              {
+                  'type': 'section',
+                  'text': {'type': 'mrkdwn', 'text': f'*{icon} Daily Automation Summary{heading_suffix} — {today}*'},
+                  'accessory': {'type': 'button', 'text': {'type': 'plain_text', 'text': 'View Dashboard'}, 'url': dashboard_url},
+              },
+              {'type': 'section', 'text': {'type': 'mrkdwn', 'text': summary_text}},
+              {'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': breadcrumb}]},
+          ]
+          if known_issue_lines:
+              attachment_blocks.append({'type': 'divider'})
+              attachment_blocks.append({'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': '\n'.join(known_issue_lines)}]})
+
+          payload = {
+              'channel': channel,
+              'attachments': [{
+                  'color': color,
+                  'fallback': f'{icon} Daily Automation Summary — {today}',
+                  'blocks': attachment_blocks,
+              }],
+          }
+
+          with open('slack-payload.json', 'w') as f:
+              json.dump(payload, f)
+
+          _dash = {f'{s}_{m.lower()}': d for (s, m), d in results.items()}
+          with open('dashboard-results.json', 'w') as f:
+              json.dump(_dash, f)
+          PYEOF
+
+      - name: Update dashboard trends
+        if: always() && steps.mode.outputs.is_preview != 'true'
+        run: |
+          python3 << 'PYEOF'
+          import json, os, pathlib, datetime
+
+          try:
+              with open('dashboard-results.json') as f:
+                  results = json.load(f)
+          except FileNotFoundError:
+              print('No dashboard-results.json found, skipping trends update.')
+              exit(0)
+
+          trends_path = pathlib.Path('docs/trends.json')
+          if trends_path.exists():
+              trends = json.loads(trends_path.read_text())
+          else:
+              trends = {'run_count': 0, 'date_range': {}, 'generated_at': '', 'runs': []}
+
+          today = datetime.date.today().strftime('%Y-%m-%d')
+
+          new_run = {'date': today, 'suites': results}
+
+          runs = trends.get('runs', [])
+          if runs and runs[-1]['date'] == today:
+              runs[-1] = new_run
+          else:
+              runs.append(new_run)
+
+          if len(runs) > 30:
+              runs = runs[-30:]
+
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+          trends['runs'] = runs
+          trends['run_count'] = len(runs)
+          trends['generated_at'] = now
+          if runs:
+              trends['date_range'] = {'from': runs[0]['date'], 'to': runs[-1]['date']}
+
+          trends_path.write_text(json.dumps(trends, indent=2))
+          print(f"Updated trends.json: {len(runs)} runs, latest {today}")
+          PYEOF
+
+      - name: Commit and push dashboard
+        if: always() && steps.mode.outputs.is_preview != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git add docs/trends.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update dashboard trends [skip ci]"
+            git pull --rebase
+            git push
+            # A GITHUB_TOKEN-authored push doesn't trigger other workflows'
+            # on:push, so dispatch the dashboard deploy explicitly — only
+            # here, where a real trends.json change actually happened.
+            gh workflow run "Deploy QA Dashboard"
+          fi
+
+      - name: Post to Slack
+        uses: slackapi/slack-github-action@v3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: slack-payload.json
+
+      - name: Cleanup
+        if: always()
+        run: rm -f slack-payload.json dashboard-results.json || true

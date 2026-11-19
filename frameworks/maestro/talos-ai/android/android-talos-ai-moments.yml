@@ -1,0 +1,240 @@
+appId: com.talos.app
+---
+
+- launchApp
+- waitForAnimationToEnd
+# Relaunch can restore a slow-loading Talos AI screen; give it a few seconds to
+# render before the exit guard checks, or the guard misses it and the flow
+# ends up waiting on Home's "Search" text forever.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# SHP_CHK_TALOS_AI_AMA_INITIAL_TAB can land this account on the Ask Go (chat)
+# tab instead of For You/Moments — talos-ai-address-button is shared chrome on
+# both tabs, so it can't tell them apart; talos-ai-chat-input only exists on Ask
+# Go. Only switch over when that's the case — tapping For You while already
+# on it reloads the screen into a transitional full-bleed state with no
+# address button, failing the assertion below.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-chat-input"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-for-you"
+      - waitForAnimationToEnd
+
+# ── 1. Moments load — no black screen ─────────────────────────────────────────
+# A fresh switch into For You can show a one-time full-bleed tutorial card
+# (its own header, no address button) before Talos AI's normal chrome renders —
+# extendedWaitUntil tolerates that instead of asserting immediately.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 15000
+
+# ── 2. Moments → PDP → dismiss (opportunistic) ───────────────────────────────
+# Tap the overlay to open a product PDP.
+# OOS products show "Notify Me" instead of "Add to Bag".
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "immersive-tap-overlay"
+    commands:
+      - tapOn:
+          id: "immersive-tap-overlay"
+          index: 0
+      - runFlow:
+          when:
+            visible: "Add to Bag"
+          commands:
+            - assertVisible: "Add to Bag"
+            - pressKey: Back
+            - extendedWaitUntil:
+                visible:
+                  id: "immersive-tap-overlay"
+                timeout: 10000
+                optional: true
+            # TALOS-125126: Back from a PDP opened after a cross-tab switch can land
+            # on "Ask Go" instead of "For You" (tab-bar state desyncs from the nav
+            # stack). Dismissing the PDP isn't what this step tests, so recover by
+            # switching tabs again rather than failing the whole suite on a known bug.
+            - runFlow:
+                when:
+                  visible:
+                    id: "talos-ai-chat-input"
+                commands:
+                  - tapOn:
+                      id: "talos-ai-tab-bar-for-you"
+                  - extendedWaitUntil:
+                      visible:
+                        id: "immersive-tap-overlay"
+                      timeout: 10000
+      # An out-of-stock moment opens the same PDP but shows "Notify Me" instead of
+      # "Add to Bag", so the branch above is skipped and the PDP stays open over the
+      # address button. Dismiss the OOS PDP the same way.
+      - runFlow:
+          when:
+            visible: "Notify Me"
+          commands:
+            - pressKey: Back
+            - extendedWaitUntil:
+                visible:
+                  id: "immersive-tap-overlay"
+                timeout: 10000
+                optional: true
+            # Same TALOS-125126 recovery as the "Add to Bag" branch above.
+            - runFlow:
+                when:
+                  visible:
+                    id: "talos-ai-chat-input"
+                commands:
+                  - tapOn:
+                      id: "talos-ai-tab-bar-for-you"
+                  - extendedWaitUntil:
+                      visible:
+                        id: "immersive-tap-overlay"
+                      timeout: 10000
+# CXP_SHP_TALOS_AI_OCTOBER_2026 is only a 25% rollout (confirmed 2026-11-15, Feature
+# Flags workspace Novus) — an account outside that bucket never gets realtime
+# moments and instead lands on the un-triggered "Tap Go to build yours" lander, so
+# there's no overlay to open a PDP from. Verify that known-good state explicitly
+# instead of silently passing or failing opaquely when the overlay never shows.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+
+# ── 3. Address switch → Moments refresh ───────────────────────────────────────
+# Match the secondary address by text, not position — the list also carries
+# permanent addresses for other suites (e.g. 5000 S Broad St for Playwright US
+# regression), so a fixed index silently lands on whichever address happens to
+# occupy that slot instead of "1 Manley" once the account has more than two.
+#
+# Tap the row's --primary label, not the full row container: on the CI
+# emulator's small viewport the last row can sit flush against the bottom of
+# the screen, overlapping the fixed "Add new address" footer button, so a tap
+# centered on the whole row lands on that footer instead (confirmed live).
+# Which address (5000 S Broad or 1 Manley) ends up in that last, at-risk slot
+# varies, so scroll+center the matched row first rather than relying on
+# either address's usual position.
+- tapOn:
+    id: "talos-ai-address-button"
+- extendedWaitUntil:
+    visible: "My address"
+    timeout: 10000
+- assertVisible: "My address"
+- scrollUntilVisible:
+    element:
+      id: "AddressListButton:[0-9]+--primary"
+      text: ".*1 Manley.*"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "AddressListButton:[0-9]+--primary"
+    text: ".*1 Manley.*"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-chat-input"
+    commands:
+      - swipe:
+          direction: DOWN
+          duration: 500
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 20000
+    optional: true
+# Same 25%-rollout fallback as section 2 above — the address switch re-triggers
+# the same lander for an account outside the rollout bucket.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+- waitForAnimationToEnd
+
+# Switch back to primary address — match by text, not position, for the same
+# reason as the switch-away tap above, and tap the --primary label for the
+# same footer-overlap reason too.
+#
+# Timeout raised 10000 -> 20000: failure screenshot showed the full-bleed
+# tutorial overlay still covering the screen, matching the reload-settle
+# case iOS hits for its analogous wait (ios-talos-ai-moments.yml).
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 20000
+- tapOn:
+    id: "talos-ai-address-button"
+- extendedWaitUntil:
+    visible: "My address"
+    timeout: 10000
+- tapOn:
+    id: "AddressListButton:[0-9]+--primary"
+    text: ".*12 Manley.*"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-chat-input"
+    commands:
+      - swipe:
+          direction: DOWN
+          duration: 500
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "immersive-tap-overlay"
+    timeout: 20000
+    optional: true
+# Same 25%-rollout fallback as above.
+- runFlow:
+    when:
+      notVisible:
+        id: "immersive-tap-overlay"
+    commands:
+      - assertVisible: "Tap Go to build yours"
+
+# Verify the switch-back restored the primary address — the shared Automation US
+# account must not be left on the secondary (1 Manley) for the checkout suite,
+# which inherits this address and places a live order.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+      text: ".*12 Manley Hot Springs Rd.*"
+    timeout: 10000
+
+# ── 4. Back navigation ────────────────────────────────────────────────────────
+- runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+- assertVisible: "Search"
+
+- stopApp

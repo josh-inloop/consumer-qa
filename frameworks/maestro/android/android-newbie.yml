@@ -1,0 +1,37 @@
+appId: com.talos.app
+---
+
+# Launch app — login-newbie subflow runs first
+- launchApp
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+# Dismiss any promo that may auto-open over home
+- tapOn:
+    id: "swipableAdvertisement_close"
+    optional: true
+- waitForAnimationToEnd
+
+# Wait for the home feed to fully render — a live home-screen promo banner can push
+# the collection header below the fold, so scroll into view instead of asserting in place.
+- scrollUntilVisible:
+    element:
+      id: "ProductCollectionHeader"
+    direction: DOWN
+    timeout: 15000
+
+# ── Newbie: Category bubble rail ─────────────────────────────────────────────
+# Scroll the category bubble row from left to right.
+# 7 passes covers all bubbles regardless of their order.
+- repeat:
+    times: 8
+    commands:
+      - swipe:
+          start: "80%,25%"
+          end: "20%,25%"
+          duration: 400
+      - waitForAnimationToEnd
+
+- assertNotVisible:
+    text: "Smoke Shop"

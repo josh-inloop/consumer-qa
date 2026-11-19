@@ -1,0 +1,159 @@
+appId: com.talos.app
+
+# Runs regardless of pass/fail. Without this, a mid-flow assertion failure
+# (e.g. the add-confirmation timing out) aborts before the "Empty my bag"
+# step ever runs, leaving a real item on this shared account's server-side
+# bag — which then fails other suites that assume an empty bag at start.
+onFlowComplete:
+  - launchApp
+  - waitForAnimationToEnd
+  # Checkout's close button has no id — just an untagged "Back" button, except
+  # under SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG, which drops it for the persistent tab
+  # bar — tap "Ask Go" there instead so cleanup can still reach talos-ai-exit.
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-tab-bar-ask-go"
+      commands:
+        - tapOn:
+            id: "talos-ai-tab-bar-ask-go"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          text: "^Back$"
+      commands:
+        - tapOn:
+            text: "^Back$"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-chat-input"
+      commands:
+        - runFlow: subflows/talos-ai-exit.yml
+  - extendedWaitUntil:
+      visible: "Search"
+      timeout: 15000
+      optional: true
+  - runFlow: ../../android/subflows/clear-bag.yml
+  - stopApp
+---
+
+# launchApp without clearState preserves login but resets the Talos AI session,
+# guaranteeing the greeting screen and suggestion chips appear.
+- launchApp
+- waitForAnimationToEnd
+# Relaunch can restore a slow-loading Talos AI screen; give it a few seconds to
+# render before the exit guard checks, or the guard misses it and the flow
+# ends up waiting on Home's "Search" text forever.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-address-button"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# ── 1. Add via natural language query ────────────────────────────────────────
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Add one Basically water to my bag"
+- hideKeyboard
+- tapOn:
+    id: "talos-ai-submit-button"
+
+# Soft signal only — the tab bar badge can lag a beat behind the actual add
+# on a loaded CI emulator. Don't abort the flow on it; step 2 below opens
+# checkout itself, which is the ground truth for "was it added".
+- extendedWaitUntil:
+    visible:
+      text: ".*Bag.*1.*"
+    timeout: 25000
+    optional: true
+
+# ── 2. Verify item was added — open checkout ──────────────────────────────────
+- tapOn:
+    id: "talos-ai-tab-bar-bag"
+# Checkout's close button has no id — just an untagged "Back" button — so
+# assert on the screen title instead. "Checkout" (vs "Confirm Checkout") is the
+# SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG experiment's title when the tab bar stays
+# visible on this screen — a 50/50 split with no account override, so either
+# can appear on a given run.
+- extendedWaitUntil:
+    visible: "^(Confirm )?Checkout$"
+    timeout: 10000
+# Return to conversation to send remove query. SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG
+# drops the "Back" button for the persistent tab bar — tap "Ask Go" there
+# instead, since talos-ai-chat-input otherwise can't be reached for step 3 below.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-tab-bar-ask-go"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-ask-go"
+- runFlow:
+    when:
+      visible:
+        text: "^Back$"
+    commands:
+      - tapOn:
+          text: "^Back$"
+- waitForAnimationToEnd
+
+# ── 3. Remove via natural language query ──────────────────────────────────────
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Empty my bag"
+- hideKeyboard
+- tapOn:
+    id: "talos-ai-submit-button"
+# Soft signal only — the tab bar badge can lag a beat behind the actual
+# clear on a loaded CI emulator. Don't abort the flow on it; step 4 below
+# opens the Bag screen itself, which is the ground truth for "is it empty".
+- extendedWaitUntil:
+    notVisible:
+      text: ".*Bag.*1.*"
+    timeout: 25000
+    optional: true
+
+# ── 4. Verify bag is empty ────────────────────────────────────────────────────
+- tapOn:
+    id: "talos-ai-tab-bar-bag"
+- extendedWaitUntil:
+    visible: "Your bag is empty"
+    timeout: 10000
+# See the step 2 note above — tab-bar variant has no "Back" button.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-tab-bar-ask-go"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-ask-go"
+- runFlow:
+    when:
+      visible:
+        text: "^Back$"
+    commands:
+      - tapOn:
+          text: "^Back$"
+
+# Attempt to return toward Home before stopApp so the next suite (checkout)
+# relaunches on Home instead of a restored Talos AI screen. Best-effort: don't
+# assert Search, since the in-app exit from this end-state doesn't reliably
+# settle on Home (Talos AI can auto-reopen) and AMA's functional assertions are
+# already complete — the exit attempt alone is what unblocks checkout.
+- runFlow: subflows/talos-ai-exit.yml
+
+- stopApp

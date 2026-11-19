@@ -1,0 +1,55 @@
+appId: com.talos.app
+---
+
+# Launch app fresh and log in via OTP
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- tapOn:
+    text: "Ask App Not to Track"
+    optional: true
+- tapOn:
+    id: "CountryCodeButton"
+- waitForAnimationToEnd
+- tapOn:
+    text: "United Kingdom"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "PhoneInput"
+- waitForAnimationToEnd:
+    timeout: 1500
+# Raw digits in chunks — sending the number too fast scrambles the new variant's field
+# (mirrors the fix verified on iOS US). Country is already set to UK above. Auto-submit was
+# removed from the new login flow, so press Enter to advance once the number is complete.
+- inputText: "${E2E_PHONE_UK_PART1}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_UK_PART2}"
+- waitForAnimationToEnd
+- inputText: "${E2E_PHONE_UK_PART3}"
+- waitForAnimationToEnd
+- pressKey: Enter
+- waitForAnimationToEnd
+# Verification code: six boxes backed by a single input (no id). Tap the row to focus it,
+# then type the code; the screen auto-submits once the sixth digit lands.
+- tapOn:
+    point: "50%,32%"
+- inputText: "${E2E_OTP}"
+- waitForAnimationToEnd
+
+# A "Talos AI" promo sheet animates in over home a beat after login and covers the
+# search bar. Dismiss it BEFORE asserting home — asserting "Search" first races the
+# slide-in and fails behind the sheet. Both steps are tolerant: when the sheet never
+# shows, the optional wait expires and the dismiss is a no-op.
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: dismiss-home-modals.yml
+
+# Wait for home screen to confirm login succeeded
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000

@@ -1,0 +1,258 @@
+appId: com.talos.app
+---
+
+# Launch app — runs before checkout, user is logged in from login subflow
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "swipableAdvertisement_close"
+    timeout: 12000
+    optional: true
+- runFlow: subflows/dismiss-home-modals.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd
+# Guard: referral/invite banner can overlay the nav bar on small screens and
+# swallow the tap before it reaches the Account tab.
+- runFlow:
+    when:
+      visible:
+        text: "I'll do this later"
+    commands:
+      - tapOn:
+          text: "I'll do this later"
+      - waitForAnimationToEnd
+- tapOn:
+    id: "accountTab"
+- waitForAnimationToEnd
+
+# Guard: the Talos AI "Introducing your personal shopping genius" intro is a
+# swipeable bottom-sheet ad that overlays the screen on first launch. It covers
+# the nav bar and swallows the Account tab tap, so we can land back on Home.
+# Close it via its testID, then re-tap Account to reach the account page.
+- runFlow:
+    when:
+      visible:
+        id: "swipableAdvertisement_close"
+    commands:
+      - tapOn:
+          id: "swipableAdvertisement_close"
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "accountTab"
+      - waitForAnimationToEnd
+
+# Guard: PromoInterstitialDialog (e.g. SNAP EBT promo) is a full-screen React
+# Navigation modal that can appear over any page. Its close button has no
+# testID; press Back to pop the modal, then re-tap Account to land there.
+- runFlow:
+    when:
+      visible:
+        id: "interstitial-promo"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "accountTab"
+      - waitForAnimationToEnd
+
+# Guard: a promo modal can animate in after the checks above already ran,
+# covering "My Orders". Re-run the generic dismiss subflow once more right
+# before verifying the page loaded.
+- runFlow: subflows/dismiss-home-modals.yml
+
+# Guard: PromoInterstitialDialog can still animate in during the wait below,
+# after every guard above already found nothing. Give it a chance to appear,
+# then dismiss it before the real assertion.
+- extendedWaitUntil:
+    visible:
+      text: "My Orders"
+    timeout: 8000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "interstitial-promo"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+
+# Verify account page is loaded
+- extendedWaitUntil:
+    visible:
+      text: "My Orders"
+    timeout: 15000
+
+# 1) My Address
+- tapOn:
+    id: "myAddressLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "AddNewAddressButton"
+    timeout: 10000
+- pressKey: Back
+- waitForAnimationToEnd
+
+# 2) My Orders
+- tapOn:
+    id: "myOrdersLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "OrderCard"
+    timeout: 10000
+- pressKey: Back
+- waitForAnimationToEnd
+
+# 3) Buy It Again
+- tapOn:
+    id: "buyItAgainLineItem"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Buy It Again"
+    timeout: 10000
+- assertVisible:
+    id: "ProductTileImage"
+- assertVisible:
+    text: "Orders"
+- pressKey: Back
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "My Orders"
+    timeout: 20000
+
+# 4) Payments — confirm payments page loads and card option is visible
+# centerElement: true scrolls paymentsLineItem to mid-screen so the raised
+# Talos AI nav button (a FAB that extends above the nav bar) cannot intercept the tap.
+- scrollUntilVisible:
+    element:
+      id: "paymentsLineItem"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "paymentsLineItem"
+- waitForAnimationToEnd
+# Guard: Android activity restoration can surface the Canceled order screen
+# repeatedly after each tap. Chain three dismissals to absorb multiple appearances.
+- runFlow:
+    when:
+      visible:
+        text: "Canceled"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "paymentsLineItem"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "Canceled"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "paymentsLineItem"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "Canceled"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "paymentsLineItem"
+      - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Add payment method"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: "Credit/Debit card"
+    direction: DOWN
+- assertVisible:
+    text: "Credit/Debit card"
+
+# Regression check for TALOS-122178: Google Pay, PayPal, and Cash App Pay were missing from
+# this list entirely. Unlike the checkout screen's icon-only preview row, each method here is
+# a separately labeled row with real text, so it's directly assertable.
+# Google Pay's availability is decided once per app session by a memoized Jotai atom
+# (stripeGooglePaySupportedAtom in app-repo useAllowedCartPaymentSystems.ts) that reads the
+# native Stripe/Google Pay bridge exactly once and caches the result. On this CI emulator
+# (google_apis image, no Play Store/Wallet), that read can come back false; on a real device
+# with Play Store it's reliably true (confirmed on a physical Pixel 7). Either way, once the
+# CI app session has decided false, no amount of re-scrolling or retrying this screen will
+# ever see the row, so this check is optional: it warns on a miss instead of failing the
+# whole suite on an emulator limitation the test can't control.
+- retry:
+    maxRetries: 2
+    optional: true
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Google Pay"
+          direction: DOWN
+      - assertVisible:
+          text: "Google Pay"
+- scrollUntilVisible:
+    element:
+      text: "PayPal"
+    direction: DOWN
+- assertVisible:
+    text: "PayPal"
+# Cash App Pay is US-only; not offered as a payment method in the UK.
+- runFlow:
+    when:
+      true: ${MARKET != 'UK'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Cash App Pay"
+          direction: DOWN
+      - assertVisible:
+          text: "Cash App Pay"
+- pressKey: Back
+- waitForAnimationToEnd
+# Confirm back on account page before scrolling to Settings
+- extendedWaitUntil:
+    visible:
+      text: "My Orders"
+    timeout: 10000
+
+# 5) Settings — verify the settings screen opens
+- scrollUntilVisible:
+    element:
+      id: "settingsLineItem"
+    direction: DOWN
+- tapOn:
+    id: "settingsLineItem"
+- waitForAnimationToEnd
+- pressKey: Back
+- waitForAnimationToEnd
+# Guard: Android activity restoration can surface the Canceled order screen after Settings back nav
+- runFlow:
+    when:
+      visible:
+        text: "Canceled"
+    commands:
+      - pressKey: Back
+      - waitForAnimationToEnd
+# Confirm back on account page before asserting Help
+- extendedWaitUntil:
+    visible:
+      text: "My Orders"
+    timeout: 10000
+
+# 6) Help — verify row is visible on account page
+- assertVisible:
+    id: "helpLineItem"
+
+- stopApp

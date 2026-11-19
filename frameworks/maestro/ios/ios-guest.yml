@@ -1,0 +1,178 @@
+appId: com.talos.app
+---
+
+# ── Phase 1: Entry + Home ─────────────────────────────────────────────────
+# A guest ("Take a look around") browses on a default zone without a delivery address.
+# An address-less guest can enter without signing in, see the home feed, browse categories,
+# search, open PDPs, and view deals — none of this requires setting an address.
+
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# Gated state — sign-in entry (phone field) visible before entering guest mode
+- assertVisible:
+    id: "PhoneInput"
+
+# Enter guest mode
+- tapOn:
+    text: "Take a look around"
+- waitForAnimationToEnd
+
+# A Talos AI promo sheet (SwipableAdvertisement) can auto-open over home; dismiss it if present.
+# Optional so it no-ops when the promo is not served.
+- tapOn:
+    id: "swipableAdvertisement_close"
+    optional: true
+- waitForAnimationToEnd
+
+# Verify the unlocked guest home state
+- extendedWaitUntil:
+    visible:
+      id: "AddressBarAddressName"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 5000
+- assertVisible:
+    id: "bagTab"
+- extendedWaitUntil:
+    visible:
+      id: "ProductCollectionHeader"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 15000
+
+# ── Phase 2: Persistence ──────────────────────────────────────────────────
+
+# Re-launch without clearState — verify the guest session + home survive an app restart
+- launchApp
+- runFlow:
+    when:
+      visible: "Take a look around"
+    commands:
+      - tapOn:
+          text: "Take a look around"
+      - waitForAnimationToEnd
+# Dismiss the Talos AI promo if it auto-opens again after relaunch.
+- tapOn:
+    id: "swipableAdvertisement_close"
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "AddressBarAddressName"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 15000
+
+# ── Phase 3: Browse ───────────────────────────────────────────────────────
+
+# Category tiles are now on the home screen in a horizontal scroll row
+# Category: UK → Fruit & Veg, US → Baby
+- runFlow:
+    when:
+      visible: "Fruit & Veg"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Fruit & Veg"
+          direction: RIGHT
+      - tapOn:
+          text: "Fruit & Veg"
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: "ProductTileImage"
+          timeout: 8000
+      - tapOn:
+          id: "ProductTileImage"
+          index: 0
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: "image"
+          timeout: 8000
+      - tapOn:
+          point: "6%,9%"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Baby"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Baby"
+          direction: RIGHT
+      - tapOn:
+          text: "Baby"
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: "ProductTileImage"
+          timeout: 8000
+      - tapOn:
+          id: "ProductTileImage"
+          index: 0
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible:
+            id: "image"
+          timeout: 8000
+      - tapOn:
+          point: "6%,9%"
+      - waitForAnimationToEnd
+
+# ── Phase 4: Search ───────────────────────────────────────────────────────
+
+# Recover if a transient category-page error screen appeared after PDP back-navigation
+- runFlow:
+    when:
+      visible: "We can't find what you're looking for"
+    commands:
+      - tapOn: "Back to Home"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "homeTab"
+- waitForAnimationToEnd
+- tapOn: "Search"
+- waitForAnimationToEnd
+
+# Results search + PDP
+- inputText: "water"
+- pressKey: Enter
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 8000
+- assertVisible:
+    text: "(?i)water"
+- tapOn:
+    id: "ProductTileImage"
+    index: 0
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "image"
+    timeout: 8000
+- tapOn:
+    point: "6%,9%"
+- waitForAnimationToEnd
+
+# ── Phase 5: Deals ────────────────────────────────────────────────────────
+
+- tapOn:
+    id: "dealsTab"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "ProductTileImage"
+    timeout: 15000
+
+- stopApp

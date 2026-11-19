@@ -1,0 +1,166 @@
+appId: com.talos.app
+
+# Runs regardless of pass/fail. Without this, a mid-flow assertion failure
+# (e.g. the add-confirmation timing out) aborts before the "Empty my bag"
+# step ever runs, leaving a real item on this shared account's server-side
+# bag — which then fails other suites that assume an empty bag at start.
+onFlowComplete:
+  - launchApp
+  - waitForAnimationToEnd
+  # Checkout's close button has no id — just an untagged "Back" button, except
+  # under SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG, which drops it for the persistent tab
+  # bar — tap "Ask Go" there instead so cleanup can still reach talos-ai-exit.
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-tab-bar-ask-go"
+      commands:
+        - tapOn:
+            id: "talos-ai-tab-bar-ask-go"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          text: "^Back$"
+      commands:
+        - tapOn:
+            text: "^Back$"
+        - waitForAnimationToEnd
+  - runFlow:
+      when:
+        visible:
+          id: "talos-ai-chat-input"
+      commands:
+        - runFlow: subflows/talos-ai-exit.yml
+  - extendedWaitUntil:
+      visible: "Search"
+      timeout: 15000
+      optional: true
+  - runFlow: ../../ios/subflows/clear-bag.yml
+  - stopApp
+---
+
+# stopApp + launchApp preserves login (no clearState) but forces a cold start,
+# preventing Talos AI from auto-reopening and resetting the session state.
+- launchApp
+- waitForAnimationToEnd
+- runFlow: ../../ios/subflows/dismiss-home-modals.yml
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-address-button"
+    commands:
+      - runFlow: subflows/talos-ai-exit.yml
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 30000
+
+- runFlow: subflows/talos-ai-launch.yml
+
+# ── 1. Add via natural language query ────────────────────────────────────────
+# Stepper tap is not testable on iOS (BottomSheet gesture recognizer intercepts
+# XCUITest events). Use a direct add query instead.
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Add one Basically water to my bag"
+- tapOn:
+    id: "talos-ai-submit-button"
+- hideKeyboard
+# Soft signal only — the tab bar badge can lag a beat behind the actual add
+# on a loaded CI simulator. Don't abort the flow on it; step 2 below opens
+# checkout itself, which is the ground truth for "was it added".
+#
+# Scoped to id "talos-ai-tab-bar-bag" specifically, not a bare text match: a bare
+# ".*Bag.*1.*" regex also matches unrelated on-screen product names that happen to
+# contain "Bag" followed later by a digit (e.g. "Hostess Donettes Powdered Mini
+# Donuts Bag 10oz" — confirmed live against a real CI failure's hierarchy dump,
+# 2026-11-05), causing false signal in both directions.
+- extendedWaitUntil:
+    visible:
+      id: "talos-ai-tab-bar-bag"
+      text: ".*1.*"
+    timeout: 25000
+    optional: true
+
+# ── 2. Verify item was added — open checkout ──────────────────────────────────
+- tapOn:
+    id: "talos-ai-tab-bar-bag"
+# Checkout's close button has no id — just an untagged "Back" button — so
+# assert on the screen title instead. "Checkout" (vs "Confirm Checkout") is the
+# SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG experiment's title when the tab bar stays
+# visible on this screen — a 50/50 split with no account override, so either
+# can appear on a given run.
+- extendedWaitUntil:
+    visible: "^(Confirm )?Checkout$"
+    timeout: 10000
+# Return to conversation to send remove query. SHP_CXP_TALOS_AI_TAB_BAR_ON_BAG
+# drops the "Back" button for the persistent tab bar — tap "Ask Go" there
+# instead, since talos-ai-chat-input otherwise can't be reached for step 3 below.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-tab-bar-ask-go"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-ask-go"
+- runFlow:
+    when:
+      visible:
+        text: "^Back$"
+    commands:
+      - tapOn:
+          text: "^Back$"
+- waitForAnimationToEnd
+
+# ── 3. Remove via natural language query ──────────────────────────────────────
+- tapOn:
+    id: "talos-ai-chat-input"
+- inputText: "Empty my bag"
+- tapOn:
+    id: "talos-ai-submit-button"
+- hideKeyboard
+# Wait for bag badge to clear before opening checkout. No fallback ground-truth
+# check exists on iOS for this (see step 4 note), so this is a hard assertion —
+# give it real headroom for Talos AI response latency rather than make it optional.
+#
+# Scoped to id "talos-ai-tab-bar-bag" specifically, not a bare text match: a real CI
+# failure's hierarchy dump (2026-11-05) showed the badge had already cleared —
+# this was failing on a recommended-product carousel item, "Hostess Donettes
+# Powdered Mini Donuts Bag 10oz", whose name alone satisfies ".*Bag.*1.*". The
+# 60s timeout was never the actual problem.
+- extendedWaitUntil:
+    notVisible:
+      id: "talos-ai-tab-bar-bag"
+      text: ".*1.*"
+    timeout: 60000
+
+# ── 4. Verify bag is empty ────────────────────────────────────────────────────
+# "Your bag is empty" text is not accessible on iOS (CharlotteTypography).
+# Opening checkout and asserting the screen title confirms it rendered;
+# emptiness is implied by the bag badge clearing in the prior step. See the
+# "^(Confirm )?Checkout$" note above for why both titles are accepted.
+- tapOn:
+    id: "talos-ai-tab-bar-bag"
+- extendedWaitUntil:
+    visible: "^(Confirm )?Checkout$"
+    timeout: 10000
+# See the step 2 note above — tab-bar variant has no "Back" button.
+- runFlow:
+    when:
+      visible:
+        id: "talos-ai-tab-bar-ask-go"
+    commands:
+      - tapOn:
+          id: "talos-ai-tab-bar-ask-go"
+- runFlow:
+    when:
+      visible:
+        text: "^Back$"
+    commands:
+      - tapOn:
+          text: "^Back$"
+- waitForAnimationToEnd
+
+- runFlow: subflows/talos-ai-exit.yml
+
+- stopApp

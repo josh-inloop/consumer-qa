@@ -1,0 +1,45 @@
+appId: com.talos.app
+---
+# Repeat the checks below in case dismissing one popup reveals another stacked behind it.
+- repeat:
+    times: 2
+    commands:
+      - runFlow:
+          when:
+            visible: "I'll do this later"
+          commands:
+            - tapOn: "I'll do this later"
+            - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible: "No thanks"
+          commands:
+            - tapOn: "No thanks"
+            - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: "swipableAdvertisement_close"
+          commands:
+            - tapOn:
+                id: "swipableAdvertisement_close"
+            - waitForAnimationToEnd
+      # Braze in-app message (native overlay, not app-owned copy/ids)
+      - runFlow:
+          when:
+            visible:
+              id: "com.talos.app:id/com_braze_inappmessage_modal_close_button"
+          commands:
+            - tapOn:
+                id: "com.talos.app:id/com_braze_inappmessage_modal_close_button"
+            - waitForAnimationToEnd
+      # Common dismiss-button copy for promos we haven't hit yet — catches new popup
+      # wording without needing a new exact-match line here every time it changes.
+      - runFlow:
+          when:
+            visible:
+              text: "(?i)^(not now|maybe later|skip|got it|no,? thanks)$"
+          commands:
+            - tapOn:
+                text: "(?i)^(not now|maybe later|skip|got it|no,? thanks)$"
+            - waitForAnimationToEnd
